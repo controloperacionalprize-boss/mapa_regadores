@@ -35,7 +35,7 @@ function speedLabel(kmh: number) {
   return "Rapido";
 }
 
-export default function TrackTimeline({ points, totalDistance, currentIndex, onIndexChange }: Props) {
+export default function TrackTimeline({ points, totalDistance: _totalDistance, currentIndex, onIndexChange }: Props) {
   if (points.length < 2) return null;
 
   const barRef = useRef<HTMLDivElement>(null);
