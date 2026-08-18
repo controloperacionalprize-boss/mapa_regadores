@@ -30,7 +30,7 @@ export default function App() {
   const [cursorIndex, setCursorIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [liveMode, setLiveMode] = useState(false);
-  const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
+  const [, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [filter, setFilter] = useState("");
   const liveRef = useRef(false);
   const selectedIdRef = useRef<string | null>(null);
