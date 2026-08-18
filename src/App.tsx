@@ -31,6 +31,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [liveMode, setLiveMode] = useState(false);
   const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
+  const [filter, setFilter] = useState("");
   const liveRef = useRef(false);
   const selectedIdRef = useRef<string | null>(null);
 
@@ -165,19 +166,7 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-right">
-          <span className={`socket-badge socket-${socketStatus}`}>
-            {socketStatus === "connected" ? "Socket conectado" : socketStatus === "connecting" ? "Conectando..." : "Desconectado"}
-          </span>
           {liveMode && <span className="live-badge">EN VIVO</span>}
-          {selected ? (
-            <button className="back-btn" onClick={goBack}>
-              Todos los recorridos
-            </button>
-          ) : (
-            <select className="filter-select">
-              <option>Todos los recorridos</option>
-            </select>
-          )}
         </div>
       </header>
       <div className="main">
@@ -187,10 +176,13 @@ export default function App() {
           points={points}
           distance={distance}
           onSelectSession={selectSession}
+          onBack={goBack}
           fundoCounts={fundoCounts}
           cursorIndex={cursorIndex}
           onCursorChange={setCursorIndex}
           liveMode={liveMode}
+          filter={filter}
+          onFilterChange={setFilter}
         />
         <div className="map-area">
           {loading ? (

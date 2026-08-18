@@ -8,10 +8,13 @@ interface Props {
   points: GpsPoint[];
   distance: number;
   onSelectSession: (s: Session) => void;
+  onBack: () => void;
   fundoCounts: Record<string, number>;
   cursorIndex: number;
   onCursorChange: (i: number) => void;
   liveMode: boolean;
+  filter: string;
+  onFilterChange: (f: string) => void;
 }
 
 const FUNDO_COLORS: Record<string, string> = {
@@ -45,7 +48,10 @@ function formatDist(m: number) {
   return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
 }
 
-export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, fundoCounts, cursorIndex, onCursorChange, liveMode }: Props) {
+export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange }: Props) {
+  const filtered = filter ? sessions.filter((s) => s.fundo.toUpperCase().includes(filter.toUpperCase())) : sessions;
+  const fundoNames = [...new Set(sessions.map((s) => s.fundo))];
+
   const avgSpeed = points.length > 1
     ? (distance / ((new Date(points[points.length - 1].grabado_en).getTime() - new Date(points[0].grabado_en).getTime()) / 1000)) * 3.6
     : 0;
@@ -56,6 +62,7 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
     <aside className="sidebar">
       {selectedSession ? (
         <>
+          <button className="back-sidebar-btn" onClick={onBack}>← Todos los recorridos</button>
           <div className="card">
             <div className="card-header">
               <h3>Detalle del recorrido</h3>
@@ -75,6 +82,10 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
               <div className="info-row">
                 <span className="label">Hora</span>
                 <span className="value">{formatTime(selectedSession.iniciado_en)} – {selectedSession.terminado_en ? formatTime(selectedSession.terminado_en) : "..."}</span>
+              </div>
+              <div className="info-row">
+                <span className="label">Usuario</span>
+                <span className="value">{selectedSession.usuario || "—"}</span>
               </div>
               <div className="info-row">
                 <span className="label">Dispositivo</span>
@@ -127,11 +138,15 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
           <div className="card">
             <div className="card-header">
               <h3>Recorridos</h3>
-              <span className="count-badge">{sessions.length}</span>
+              <span className="count-badge">{filtered.length}</span>
             </div>
             <div className="card-body">
+              <select className="filter-sidebar" value={filter} onChange={(e) => onFilterChange(e.target.value)}>
+                <option value="">Todos los fundos</option>
+                {fundoNames.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
               <div className="session-list">
-                {sessions.slice(0, 5).map((s) => (
+                {filtered.map((s) => (
                   <button key={s.id} className={`session-btn ${!s.terminado_en ? "session-btn-live" : ""}`} onClick={() => onSelectSession(s)}>
                     <div className="session-btn-left">
                       <div className="session-btn-fundo">
@@ -140,17 +155,15 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                         {s.fundo}
                       </div>
                       <div className="session-btn-date">{formatDate(s.iniciado_en)}</div>
+                      {s.usuario && <div className="session-btn-user">{s.usuario}</div>}
                     </div>
                     <div className="session-btn-duration">
                       {!s.terminado_en ? "En vivo" : durationMin(s.iniciado_en, s.terminado_en)}
                     </div>
                   </button>
                 ))}
-                {sessions.length === 0 && <p className="empty">No hay recorridos</p>}
+                {filtered.length === 0 && <p className="empty">No hay recorridos</p>}
               </div>
-              {sessions.length > 5 && (
-                <div className="session-list-link">Ver todos los recorridos</div>
-              )}
             </div>
           </div>
 

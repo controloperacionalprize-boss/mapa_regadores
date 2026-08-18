@@ -16,6 +16,7 @@ export interface Session {
   terminado_en: string | null;
   dispositivo: string | null;
   app: string | null;
+  usuario: string | null;
 }
 
 export interface GpsPoint {
