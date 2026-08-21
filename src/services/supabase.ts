@@ -30,6 +30,61 @@ export interface GpsPoint {
   grabado_en: string;
 }
 
+export interface UsuarioAutorizado {
+  id: string;
+  email: string;
+  nombre: string | null;
+  rol: string;
+  activo: boolean;
+  creado_en: string;
+}
+
+export async function checkUsuarioAutorizado(email: string): Promise<UsuarioAutorizado | null> {
+  const { data } = await supabase
+    .from("usuarios_autorizados")
+    .select("*")
+    .eq("email", email.toLowerCase().trim())
+    .eq("activo", true)
+    .maybeSingle();
+  return data;
+}
+
+export async function getUsuariosAutorizados(): Promise<UsuarioAutorizado[]> {
+  const { data, error } = await supabase
+    .from("usuarios_autorizados")
+    .select("*")
+    .order("creado_en", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addUsuarioAutorizado(email: string, nombre: string, rol: string) {
+  const { error } = await supabase
+    .from("usuarios_autorizados")
+    .insert({ email: email.toLowerCase().trim(), nombre, rol });
+  if (error) throw error;
+}
+
+export async function updateUsuarioAutorizado(id: string, updates: Partial<Pick<UsuarioAutorizado, "nombre" | "rol" | "activo">>) {
+  const { error } = await supabase
+    .from("usuarios_autorizados")
+    .update(updates)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteUsuarioAutorizado(id: string) {
+  const { error } = await supabase
+    .from("usuarios_autorizados")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
 export async function getActiveSessions(): Promise<Session[]> {
   const { data, error } = await supabase
     .from("sesiones_gps")

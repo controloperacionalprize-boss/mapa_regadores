@@ -238,3 +238,48 @@ html, body, #root {
   border-radius: 4px 0 0 0 !important;
 }
 .leaflet-control-attribution a { color: #4A90E2 !important; }
+
+/* ── Admin button ── */
+.admin-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #4A90E2;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.admin-btn:hover {
+  border-color: #4A90E2;
+  background: #eff6ff;
+}
+
+/* ── User badge & logout ── */
+.user-badge {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.logout-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
+}

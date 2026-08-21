@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getSessions, getSessionPoints, getMultiSessionPoints, supabase } from "./services/supabase";
-import type { Session, GpsPoint } from "./services/supabase";
+import { getSessions, getSessionPoints, getMultiSessionPoints, supabase, checkUsuarioAutorizado } from "./services/supabase";
+import type { Session, GpsPoint, UsuarioAutorizado } from "./services/supabase";
 import { loadKmzPolygons } from "./services/kmzLoader";
 import type { PolygonData } from "./services/kmzLoader";
 import MapView from "./components/MapView";
 import type { TrackData } from "./components/MapView";
 import Sidebar from "./components/Sidebar";
+import LoginPage from "./components/LoginPage";
+import UsersAdmin from "./components/UsersAdmin";
 import "./App.css";
 
 const TRACK_COLORS = [
@@ -29,6 +31,36 @@ function calcDistance(pts: GpsPoint[]) {
 }
 
 export default function App() {
+  const [usuario, setUsuario] = useState<UsuarioAutorizado | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleLogin = (u: UsuarioAutorizado) => {
+    setUsuario(u);
+    localStorage.setItem("usuario_email", u.email);
+  };
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("usuario_email");
+    if (savedEmail) {
+      setAuthLoading(true);
+      checkUsuarioAutorizado(savedEmail).then((u) => {
+        if (u) setUsuario(u);
+        else localStorage.removeItem("usuario_email");
+        setAuthLoading(false);
+      });
+    }
+  }, []);
+
+  if (authLoading) return <div className="loading" style={{ height: "100vh" }}>Cargando...</div>;
+  if (!usuario) return <LoginPage onLogin={handleLogin} />;
+
+  return <Dashboard usuario={usuario} onLogout={async () => {
+    setUsuario(null);
+    localStorage.removeItem("usuario_email");
+  }} />;
+}
+
+function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout: () => void }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<Session | null>(null);
   const [points, setPoints] = useState<GpsPoint[]>([]);
@@ -41,6 +73,8 @@ export default function App() {
   const [filter, setFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [multiTracks, setMultiTracks] = useState<TrackData[]>([]);
+  const [showUsersAdmin, setShowUsersAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const liveRef = useRef(false);
   const selectedIdRef = useRef<string | null>(null);
 
@@ -50,6 +84,10 @@ export default function App() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setIsAdmin(usuario.rol === "admin");
+  }, [usuario.rol]);
 
   // Poll sessions every 3s to detect new/ended sessions
   useEffect(() => {
@@ -196,6 +234,9 @@ export default function App() {
         </div>
         <div className="topbar-right">
           {liveMode && <span className="live-badge">EN VIVO</span>}
+          {isAdmin && <button className="admin-btn" onClick={() => setShowUsersAdmin(true)}>Usuarios</button>}
+          <span className="user-badge">{usuario.email}</span>
+          <button className="logout-btn" onClick={onLogout}>Salir</button>
         </div>
       </header>
       <div className="main">
@@ -224,6 +265,7 @@ export default function App() {
           )}
         </div>
       </div>
+      {showUsersAdmin && <UsersAdmin onClose={() => setShowUsersAdmin(false)} />}
     </div>
   );
 }
