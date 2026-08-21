@@ -60,3 +60,19 @@ export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
   if (error) throw error;
   return data || [];
 }
+
+export async function getMultiSessionPoints(sessionIds: string[]): Promise<Record<string, GpsPoint[]>> {
+  if (sessionIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("punto_gps")
+    .select("*")
+    .in("sesion_id", sessionIds)
+    .order("grabado_en", { ascending: true });
+  if (error) throw error;
+  const grouped: Record<string, GpsPoint[]> = {};
+  (data || []).forEach((p) => {
+    if (!grouped[p.sesion_id]) grouped[p.sesion_id] = [];
+    grouped[p.sesion_id].push(p);
+  });
+  return grouped;
+}

@@ -1,4 +1,5 @@
 import type { Session, GpsPoint } from "../services/supabase";
+import type { TrackData } from "./MapView";
 import TrackTimeline from "./TrackTimeline";
 import "./Sidebar.css";
 
@@ -15,6 +16,9 @@ interface Props {
   liveMode: boolean;
   filter: string;
   onFilterChange: (f: string) => void;
+  dateFilter: string;
+  onDateFilterChange: (d: string) => void;
+  multiTracks: TrackData[];
 }
 
 const FUNDO_COLORS: Record<string, string> = {
@@ -48,8 +52,16 @@ function formatDist(m: number) {
   return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
 }
 
-export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange }: Props) {
-  const filtered = filter ? sessions.filter((s) => s.fundo.toUpperCase().includes(filter.toUpperCase())) : sessions;
+export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFilter, onDateFilterChange, multiTracks }: Props) {
+  const filtered = sessions.filter((s) => {
+    if (filter && !s.fundo.toUpperCase().includes(filter.toUpperCase())) return false;
+    if (dateFilter) {
+      const d = new Date(s.iniciado_en);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (dateStr !== dateFilter) return false;
+    }
+    return true;
+  });
   const fundoNames = [...new Set(sessions.map((s) => s.fundo))];
 
   const avgSpeed = points.length > 1
@@ -145,6 +157,12 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                 <option value="">Todos los fundos</option>
                 {fundoNames.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
+              <input
+                type="date"
+                className="filter-sidebar"
+                value={dateFilter}
+                onChange={(e) => onDateFilterChange(e.target.value)}
+              />
               <div className="session-list">
                 {filtered.map((s) => (
                   <button key={s.id} className={`session-btn ${!s.terminado_en ? "session-btn-live" : ""}`} onClick={() => onSelectSession(s)}>
@@ -166,6 +184,28 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
               </div>
             </div>
           </div>
+
+          {multiTracks.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <h3>Recorridos en mapa</h3>
+                <span className="count-badge">{multiTracks.length}</span>
+              </div>
+              <div className="card-body">
+                <div className="track-legend">
+                  {multiTracks.map((t) => (
+                    <div className="track-legend-item" key={t.sessionId}>
+                      <span className="track-legend-color" style={{ background: t.color }} />
+                      <div className="track-legend-text">
+                        <div className="track-legend-label">{t.label}</div>
+                        <div className="track-legend-pts">{t.points.length} pts</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="card">
             <div className="card-header"><h3>Resumen</h3></div>

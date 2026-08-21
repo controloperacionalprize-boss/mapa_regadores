@@ -1,11 +1,18 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getSessions, getSessionPoints, supabase } from "./services/supabase";
+import { getSessions, getSessionPoints, getMultiSessionPoints, supabase } from "./services/supabase";
 import type { Session, GpsPoint } from "./services/supabase";
 import { loadKmzPolygons } from "./services/kmzLoader";
 import type { PolygonData } from "./services/kmzLoader";
 import MapView from "./components/MapView";
+import type { TrackData } from "./components/MapView";
 import Sidebar from "./components/Sidebar";
 import "./App.css";
+
+const TRACK_COLORS = [
+  "#00e5ff", "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff",
+  "#ff922b", "#cc5de8", "#20c997", "#ff6b81", "#748ffc",
+  "#f06595", "#51cf66", "#fcc419", "#339af0", "#e64980",
+];
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371000;
@@ -32,6 +39,8 @@ export default function App() {
   const [liveMode, setLiveMode] = useState(false);
   const [, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [filter, setFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [multiTracks, setMultiTracks] = useState<TrackData[]>([]);
   const liveRef = useRef(false);
   const selectedIdRef = useRef<string | null>(null);
 
@@ -129,6 +138,26 @@ export default function App() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  useEffect(() => {
+    if (!dateFilter || selected) { setMultiTracks([]); return; }
+    const sessionsForDate = sessions.filter((s) => {
+      const d = new Date(s.iniciado_en);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return dateStr === dateFilter;
+    });
+    if (sessionsForDate.length === 0) { setMultiTracks([]); return; }
+    const ids = sessionsForDate.map((s) => s.id);
+    getMultiSessionPoints(ids).then((grouped) => {
+      const tracks: TrackData[] = sessionsForDate.map((s, i) => ({
+        sessionId: s.id,
+        points: grouped[s.id] || [],
+        color: TRACK_COLORS[i % TRACK_COLORS.length],
+        label: `${s.fundo} — ${s.usuario || "Sin usuario"}`,
+      })).filter((t) => t.points.length > 0);
+      setMultiTracks(tracks);
+    }).catch(console.error);
+  }, [dateFilter, sessions, selected]);
+
   const selectSession = useCallback(async (s: Session) => {
     setSelected(s);
     selectedIdRef.current = s.id;
@@ -183,12 +212,15 @@ export default function App() {
           liveMode={liveMode}
           filter={filter}
           onFilterChange={setFilter}
+          dateFilter={dateFilter}
+          onDateFilterChange={setDateFilter}
+          multiTracks={multiTracks}
         />
         <div className="map-area">
           {loading ? (
             <div className="loading">Cargando datos...</div>
           ) : (
-            <MapView polygons={polygons} points={points} cursorIndex={cursorIndex} liveMode={liveMode} />
+            <MapView polygons={polygons} points={points} cursorIndex={cursorIndex} liveMode={liveMode} multiTracks={multiTracks} />
           )}
         </div>
       </div>

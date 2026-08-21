@@ -4,11 +4,19 @@ import type { PolygonData } from "../services/kmzLoader";
 import type { GpsPoint } from "../services/supabase";
 import "leaflet/dist/leaflet.css";
 
+export interface TrackData {
+  sessionId: string;
+  points: GpsPoint[];
+  color: string;
+  label: string;
+}
+
 interface Props {
   polygons: PolygonData[];
   points: GpsPoint[];
   cursorIndex: number;
   liveMode: boolean;
+  multiTracks?: TrackData[];
 }
 
 function FitBounds({ points }: { points: GpsPoint[] }) {
@@ -103,7 +111,26 @@ function splitAtJumps(coords: [number, number][], maxGapM = 200): [number, numbe
   return segments;
 }
 
-export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMode }: Props) {
+function FitMultiBounds({ tracks }: { tracks: TrackData[] }) {
+  const map = useMap();
+  const didFit = useRef(false);
+  const trackKey = tracks.map((t) => t.sessionId).join(",");
+  useEffect(() => { didFit.current = false; }, [trackKey]);
+  useEffect(() => {
+    if (didFit.current) return;
+    const allPts = tracks.flatMap((t) => t.points);
+    if (allPts.length < 2) return;
+    const lats = allPts.map((p) => p.lat);
+    const lngs = allPts.map((p) => p.lng);
+    map.fitBounds([[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]], { padding: [40, 40] });
+    didFit.current = true;
+  }, [tracks, map]);
+  return null;
+}
+
+export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMode, multiTracks }: Props) {
+  const isMulti = multiTracks && multiTracks.length > 0 && points.length === 0;
+
   const cursorIndex = Math.min(rawIdx, Math.max(0, points.length - 1));
   const trackCoords = points.map((p) => [p.lat, p.lng] as [number, number]);
   const walkedCoords = trackCoords.slice(0, cursorIndex + 1);
@@ -112,7 +139,9 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
   const remainingSegments = splitAtJumps(remainingCoords);
   const center: [number, number] = points.length
     ? [points[0].lat, points[0].lng]
-    : [-7.65, -79.35];
+    : multiTracks && multiTracks.length > 0 && multiTracks[0].points.length > 0
+      ? [multiTracks[0].points[0].lat, multiTracks[0].points[0].lng]
+      : [-7.65, -79.35];
   const cursorPt = points.length > 0 ? points[cursorIndex] : undefined;
 
   return (
@@ -131,30 +160,48 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
         />
       ))}
 
-      {remainingSegments.map((seg, i) => (
+      {isMulti && multiTracks!.map((track) => {
+        const coords = track.points.map((p) => [p.lat, p.lng] as [number, number]);
+        const segs = splitAtJumps(coords);
+        return (
+          <React.Fragment key={track.sessionId}>
+            {segs.map((seg, i) => (
+              <React.Fragment key={`mt-${track.sessionId}-${i}`}>
+                <Polyline positions={seg} pathOptions={{ color: track.color, weight: 10, opacity: 0.15 }} />
+                <Polyline positions={seg} pathOptions={{ color: track.color, weight: 4, opacity: 0.9 }} />
+              </React.Fragment>
+            ))}
+            {track.points.length > 0 && (
+              <CircleMarker center={[track.points[0].lat, track.points[0].lng]} radius={6} pathOptions={{ color: "#fff", fillColor: track.color, fillOpacity: 1, weight: 2 }} />
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      {!isMulti && remainingSegments.map((seg, i) => (
         <Polyline key={`rem${i}`} positions={seg} pathOptions={{ color: "#00e5ff", weight: 3, opacity: 0.2, dashArray: "6 4" }} />
       ))}
 
-      {walkedSegments.map((seg, i) => (
+      {!isMulti && walkedSegments.map((seg, i) => (
         <React.Fragment key={`walk${i}`}>
           <Polyline positions={seg} pathOptions={{ color: "#00e5ff", weight: 12, opacity: 0.15 }} />
           <Polyline positions={seg} pathOptions={{ color: "#00e5ff", weight: 4, opacity: 0.9 }} />
         </React.Fragment>
       ))}
 
-      {points.length > 0 && (
+      {!isMulti && points.length > 0 && (
         <CircleMarker center={[points[0].lat, points[0].lng]} radius={7} pathOptions={{ color: "#fff", fillColor: "#22c55e", fillOpacity: 1, weight: 3 }} />
       )}
-      {points.length > 1 && cursorIndex === points.length - 1 && (
+      {!isMulti && points.length > 1 && cursorIndex === points.length - 1 && (
         <CircleMarker center={[points[points.length - 1].lat, points[points.length - 1].lng]} radius={7} pathOptions={{ color: "#fff", fillColor: "#ef4444", fillOpacity: 1, weight: 3 }} />
       )}
 
-      {cursorPt && (
+      {!isMulti && cursorPt && (
         <CircleMarker center={[cursorPt.lat, cursorPt.lng]} radius={9} pathOptions={{ color: "#fff", fillColor: "#00e5ff", fillOpacity: 1, weight: 3 }} />
       )}
 
-      <FitBounds points={points} />
-      {points.length > 0 && <LiveFollow points={points} index={cursorIndex} liveMode={liveMode} />}
+      {isMulti ? <FitMultiBounds tracks={multiTracks!} /> : <FitBounds points={points} />}
+      {!isMulti && points.length > 0 && <LiveFollow points={points} index={cursorIndex} liveMode={liveMode} />}
     </MapContainer>
   );
 }
