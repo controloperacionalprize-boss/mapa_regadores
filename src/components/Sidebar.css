@@ -482,3 +482,41 @@
   font-variant-numeric: tabular-nums;
   font-weight: 400;
 }
+
+.offline-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.offline-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--t2);
+}
+
+.offline-legend-line {
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.offline-legend-dashed {
+  background: repeating-linear-gradient(
+    90deg,
+    #ff9800 0px,
+    #ff9800 6px,
+    transparent 6px,
+    transparent 10px
+  ) !important;
+}
+
+.offline-stats {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--t3);
+  font-variant-numeric: tabular-nums;
+}

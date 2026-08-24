@@ -143,6 +143,28 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
             </div>
           </div>
 
+          {points.some((p) => p.offline) && (
+            <div className="card">
+              <div className="card-header"><h3>Conectividad</h3></div>
+              <div className="card-body">
+                <div className="offline-legend">
+                  <div className="offline-legend-item">
+                    <span className="offline-legend-line" style={{ background: "#00e5ff" }} />
+                    <span>Con internet</span>
+                  </div>
+                  <div className="offline-legend-item">
+                    <span className="offline-legend-line offline-legend-dashed" style={{ background: "#ff9800" }} />
+                    <span>Sin internet (offline)</span>
+                  </div>
+                </div>
+                <div className="offline-stats">
+                  <span>{points.filter((p) => p.offline).length} puntos offline</span>
+                  <span> / {points.length} total</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <TrackTimeline points={points} totalDistance={distance} currentIndex={cursorIndex} onIndexChange={onCursorChange} />
         </>
       ) : (

@@ -87,19 +87,21 @@ function LiveFollow({ points, index, liveMode }: { points: GpsPoint[]; index: nu
   return null;
 }
 
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function splitAtJumps(coords: [number, number][], maxGapM = 200): [number, number][][] {
   if (coords.length < 2) return coords.length ? [coords] : [];
   const segments: [number, number][][] = [];
   let seg: [number, number][] = [coords[0]];
   for (let i = 1; i < coords.length; i++) {
-    const [lat1, lng1] = coords[i - 1];
-    const [lat2, lng2] = coords[i];
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-    const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dist = haversine(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]);
     if (dist > maxGapM) {
       if (seg.length > 1) segments.push(seg);
       seg = [coords[i]];
@@ -108,6 +110,33 @@ function splitAtJumps(coords: [number, number][], maxGapM = 200): [number, numbe
     }
   }
   if (seg.length > 1) segments.push(seg);
+  return segments;
+}
+
+interface OfflineSegment {
+  coords: [number, number][];
+  offline: boolean;
+}
+
+function splitByOffline(points: GpsPoint[]): OfflineSegment[] {
+  if (points.length === 0) return [];
+  const segments: OfflineSegment[] = [];
+  let current: OfflineSegment = { coords: [[points[0].lat, points[0].lng]], offline: !!points[0].offline };
+  for (let i = 1; i < points.length; i++) {
+    const isOff = !!points[i].offline;
+    const dist = haversine(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng);
+    if (dist > 200) {
+      if (current.coords.length > 1) segments.push(current);
+      current = { coords: [[points[i].lat, points[i].lng]], offline: isOff };
+    } else if (isOff !== current.offline) {
+      current.coords.push([points[i].lat, points[i].lng]);
+      segments.push(current);
+      current = { coords: [[points[i].lat, points[i].lng]], offline: isOff };
+    } else {
+      current.coords.push([points[i].lat, points[i].lng]);
+    }
+  }
+  if (current.coords.length > 1) segments.push(current);
   return segments;
 }
 
@@ -137,6 +166,8 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
   const remainingCoords = trackCoords.slice(cursorIndex);
   const walkedSegments = splitAtJumps(walkedCoords);
   const remainingSegments = splitAtJumps(remainingCoords);
+  const walkedPoints = points.slice(0, cursorIndex + 1);
+  const offlineSegments = splitByOffline(walkedPoints);
   const center: [number, number] = points.length
     ? [points[0].lat, points[0].lng]
     : multiTracks && multiTracks.length > 0 && multiTracks[0].points.length > 0
@@ -182,10 +213,10 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
         <Polyline key={`rem${i}`} positions={seg} pathOptions={{ color: "#00e5ff", weight: 3, opacity: 0.2, dashArray: "6 4" }} />
       ))}
 
-      {!isMulti && walkedSegments.map((seg, i) => (
+      {!isMulti && offlineSegments.map((seg, i) => (
         <React.Fragment key={`walk${i}`}>
-          <Polyline positions={seg} pathOptions={{ color: "#00e5ff", weight: 12, opacity: 0.15 }} />
-          <Polyline positions={seg} pathOptions={{ color: "#00e5ff", weight: 4, opacity: 0.9 }} />
+          <Polyline positions={seg.coords} pathOptions={{ color: seg.offline ? "#ff9800" : "#00e5ff", weight: 12, opacity: 0.15 }} />
+          <Polyline positions={seg.coords} pathOptions={{ color: seg.offline ? "#ff9800" : "#00e5ff", weight: 4, opacity: 0.9, dashArray: seg.offline ? "8 6" : undefined }} />
         </React.Fragment>
       ))}
 

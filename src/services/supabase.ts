@@ -28,6 +28,7 @@ export interface GpsPoint {
   precision_metros: number;
   fundo: string;
   grabado_en: string;
+  offline: boolean | null;
 }
 
 export interface UsuarioAutorizado {
