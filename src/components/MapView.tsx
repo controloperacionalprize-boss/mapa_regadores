@@ -162,9 +162,7 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
 
   const cursorIndex = Math.min(rawIdx, Math.max(0, points.length - 1));
   const trackCoords = points.map((p) => [p.lat, p.lng] as [number, number]);
-  const walkedCoords = trackCoords.slice(0, cursorIndex + 1);
   const remainingCoords = trackCoords.slice(cursorIndex);
-  const walkedSegments = splitAtJumps(walkedCoords);
   const remainingSegments = splitAtJumps(remainingCoords);
   const walkedPoints = points.slice(0, cursorIndex + 1);
   const offlineSegments = splitByOffline(walkedPoints);
