@@ -3,6 +3,7 @@ import JSZip from "jszip";
 export interface PolygonData {
   coords: [number, number][];
   fundo: string;
+  modulo: string;
   color: string;
 }
 
@@ -19,10 +20,16 @@ const FUNDO_COLORS: Record<string, string> = {
   "AYLLU ALLPA": "#f58231",
 };
 
-function getFundo(mod: string): string {
+function getModuloCode(mod: string): string {
   const m = mod.toUpperCase().match(/^(AQ\d+)\s*-\s*MODULO\s*(\d+)/);
-  if (!m) return "SIN FUNDO";
-  return MODULO_A_FUNDO[`${m[1]}-${parseInt(m[2])}`] || "SIN FUNDO";
+  if (!m) return "";
+  return `${m[1]}-${parseInt(m[2])}`;
+}
+
+function getFundo(mod: string): string {
+  const code = getModuloCode(mod);
+  if (!code) return "SIN FUNDO";
+  return MODULO_A_FUNDO[code] || "SIN FUNDO";
 }
 
 function assignFolderToPlacemarks(kml: string): string[] {
@@ -87,7 +94,8 @@ export async function loadKmzPolygons(): Promise<PolygonData[]> {
       }).filter(Boolean) as [number, number][];
       if (coords.length < 3) continue;
       const fundo = getFundo(folder);
-      polygons.push({ coords, fundo, color: FUNDO_COLORS[fundo] || "#999" });
+      const modulo = getModuloCode(folder);
+      polygons.push({ coords, fundo, modulo, color: FUNDO_COLORS[fundo] || "#999" });
     }
   }
   return polygons;

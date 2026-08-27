@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getSessions, getSessionPoints, getMultiSessionPoints, supabase, checkUsuarioAutorizado } from "./services/supabase";
-import type { Session, GpsPoint, UsuarioAutorizado } from "./services/supabase";
+import { getSessions, getSessionPoints, getMultiSessionPoints, supabase, checkUsuarioAutorizado, getDispositivoByAndroidId, getDispositivos, getParadas, getParadaFotos } from "./services/supabase";
+import type { Session, GpsPoint, UsuarioAutorizado, Dispositivo } from "./services/supabase";
+import type { ParadaConFotos } from "./components/MapView";
 import { loadKmzPolygons } from "./services/kmzLoader";
 import type { PolygonData } from "./services/kmzLoader";
 import MapView from "./components/MapView";
@@ -8,6 +9,7 @@ import type { TrackData } from "./components/MapView";
 import Sidebar from "./components/Sidebar";
 import LoginPage from "./components/LoginPage";
 import UsersAdmin from "./components/UsersAdmin";
+import DevicesAdmin from "./components/DevicesAdmin";
 import "./App.css";
 
 const TRACK_COLORS = [
@@ -74,7 +76,12 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
   const [dateFilter, setDateFilter] = useState("");
   const [multiTracks, setMultiTracks] = useState<TrackData[]>([]);
   const [showUsersAdmin, setShowUsersAdmin] = useState(false);
+  const [showDevicesAdmin, setShowDevicesAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [highlightFundos, setHighlightFundos] = useState<string[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [deviceMap, setDeviceMap] = useState<Record<string, Dispositivo>>({});
+  const [paradas, setParadas] = useState<ParadaConFotos[]>([]);
   const liveRef = useRef(false);
   const selectedIdRef = useRef<string | null>(null);
 
@@ -83,6 +90,13 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
       .then(([s, p]) => { setSessions(s); setPolygons(p); })
       .catch(console.error)
       .finally(() => setLoading(false));
+    getDispositivos()
+      .then((devs) => {
+        const map: Record<string, Dispositivo> = {};
+        devs.forEach((d) => { map[d.android_id] = d; });
+        setDeviceMap(map);
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -206,6 +220,23 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
     setCursorIndex(pts.length - 1);
     setPoints(pts);
     setDistance(calcDistance(pts));
+
+    if (s.usuario) {
+      try {
+        const dev = await getDispositivoByAndroidId(s.usuario);
+        setHighlightFundos(dev?.fundos_asignados || []);
+      } catch { setHighlightFundos([]); }
+    } else {
+      setHighlightFundos([]);
+    }
+
+    try {
+      const ps = await getParadas(s.id);
+      const withFotos = await Promise.all(
+        ps.map(async (p) => ({ ...p, fotos: await getParadaFotos(p.id) }))
+      );
+      setParadas(withFotos);
+    } catch { setParadas([]); }
   }, []);
 
   const goBack = useCallback(() => {
@@ -216,6 +247,8 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
     setCursorIndex(0);
     setLiveMode(false);
     liveRef.current = false;
+    setHighlightFundos([]);
+    setParadas([]);
   }, []);
 
   const fundoCounts: Record<string, number> = {};
@@ -225,7 +258,7 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
     <div className="app">
       <header className="topbar">
         <div className="topbar-left">
-          <button className="topbar-hamburger"><span /><span /><span /></button>
+          <button className="topbar-hamburger" onClick={() => setSidebarOpen((v) => !v)}><span /><span /><span /></button>
           <div className="logo">📍</div>
           <div>
             <h1>Mapa Regadores</h1>
@@ -234,12 +267,14 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
         </div>
         <div className="topbar-right">
           {liveMode && <span className="live-badge">EN VIVO</span>}
+          {isAdmin && <button className="admin-btn" onClick={() => setShowDevicesAdmin(true)}>Dispositivos</button>}
           {isAdmin && <button className="admin-btn" onClick={() => setShowUsersAdmin(true)}>Usuarios</button>}
           <span className="user-badge">{usuario.email}</span>
           <button className="logout-btn" onClick={onLogout}>Salir</button>
         </div>
       </header>
       <div className="main">
+        <div className={`sidebar-wrapper ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
         <Sidebar
           sessions={sessions}
           selectedSession={selected}
@@ -256,16 +291,21 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
           dateFilter={dateFilter}
           onDateFilterChange={setDateFilter}
           multiTracks={multiTracks}
+          highlightFundos={highlightFundos}
+          deviceMap={deviceMap}
+          paradas={paradas}
         />
+        </div>
         <div className="map-area">
           {loading ? (
             <div className="loading">Cargando datos...</div>
           ) : (
-            <MapView polygons={polygons} points={points} cursorIndex={cursorIndex} liveMode={liveMode} multiTracks={multiTracks} />
+            <MapView polygons={polygons} points={points} cursorIndex={cursorIndex} liveMode={liveMode} multiTracks={multiTracks} highlightFundos={highlightFundos} paradas={paradas} />
           )}
         </div>
       </div>
       {showUsersAdmin && <UsersAdmin onClose={() => setShowUsersAdmin(false)} />}
+      {showDevicesAdmin && <DevicesAdmin onClose={() => setShowDevicesAdmin(false)} />}
     </div>
   );
 }

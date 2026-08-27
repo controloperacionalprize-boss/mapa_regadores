@@ -86,6 +86,88 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+export interface Dispositivo {
+  id: string;
+  android_id: string;
+  modelo: string | null;
+  nombre: string | null;
+  fundos_asignados: string[];
+  activo: boolean;
+  registrado_en: string;
+  ultimo_acceso: string;
+}
+
+export async function getDispositivos(): Promise<Dispositivo[]> {
+  const { data, error } = await supabase
+    .from("dispositivos")
+    .select("*")
+    .order("registrado_en", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateDispositivo(id: string, updates: Partial<Pick<Dispositivo, "nombre" | "fundos_asignados" | "activo">>) {
+  const { error } = await supabase
+    .from("dispositivos")
+    .update(updates)
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteDispositivo(id: string) {
+  const { error } = await supabase
+    .from("dispositivos")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function getDispositivoByAndroidId(androidId: string): Promise<Dispositivo | null> {
+  const { data } = await supabase
+    .from("dispositivos")
+    .select("*")
+    .eq("android_id", androidId)
+    .maybeSingle();
+  return data;
+}
+
+export interface Parada {
+  id: string;
+  sesion_id: string;
+  lat: number;
+  lng: number;
+  inicio: string;
+  fin: string | null;
+  nota: string | null;
+}
+
+export interface ParadaFoto {
+  id: string;
+  parada_id: string;
+  url: string;
+  grabado_en: string;
+}
+
+export async function getParadas(sesionId: string): Promise<Parada[]> {
+  const { data, error } = await supabase
+    .from("paradas")
+    .select("*")
+    .eq("sesion_id", sesionId)
+    .order("inicio", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getParadaFotos(paradaId: string): Promise<ParadaFoto[]> {
+  const { data, error } = await supabase
+    .from("parada_fotos")
+    .select("*")
+    .eq("parada_id", paradaId)
+    .order("grabado_en", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
 export async function getActiveSessions(): Promise<Session[]> {
   const { data, error } = await supabase
     .from("sesiones_gps")
@@ -108,25 +190,21 @@ export async function getSessions(): Promise<Session[]> {
 }
 
 export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
-  const { data, error } = await supabase
-    .from("punto_gps")
-    .select("*")
-    .eq("sesion_id", sessionId)
-    .order("grabado_en", { ascending: true });
+  const { data, error } = await supabase.rpc("get_all_session_points", {
+    p_sesion_id: sessionId,
+  });
   if (error) throw error;
-  return data || [];
+  return (data as GpsPoint[]) || [];
 }
 
 export async function getMultiSessionPoints(sessionIds: string[]): Promise<Record<string, GpsPoint[]>> {
   if (sessionIds.length === 0) return {};
-  const { data, error } = await supabase
-    .from("punto_gps")
-    .select("*")
-    .in("sesion_id", sessionIds)
-    .order("grabado_en", { ascending: true });
+  const { data, error } = await supabase.rpc("get_multi_session_points", {
+    p_sesion_ids: sessionIds,
+  });
   if (error) throw error;
   const grouped: Record<string, GpsPoint[]> = {};
-  (data || []).forEach((p) => {
+  ((data as GpsPoint[]) || []).forEach((p) => {
     if (!grouped[p.sesion_id]) grouped[p.sesion_id] = [];
     grouped[p.sesion_id].push(p);
   });

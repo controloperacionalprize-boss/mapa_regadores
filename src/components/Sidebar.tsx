@@ -1,4 +1,6 @@
-import type { Session, GpsPoint } from "../services/supabase";
+import { useState } from "react";
+import type { Session, GpsPoint, Dispositivo } from "../services/supabase";
+import type { ParadaConFotos } from "./MapView";
 import type { TrackData } from "./MapView";
 import TrackTimeline from "./TrackTimeline";
 import "./Sidebar.css";
@@ -19,6 +21,9 @@ interface Props {
   dateFilter: string;
   onDateFilterChange: (d: string) => void;
   multiTracks: TrackData[];
+  highlightFundos?: string[];
+  deviceMap?: Record<string, Dispositivo>;
+  paradas?: ParadaConFotos[];
 }
 
 const FUNDO_COLORS: Record<string, string> = {
@@ -28,9 +33,29 @@ const FUNDO_COLORS: Record<string, string> = {
   "Ayllu Allpa": "#ef4444",
 };
 
+const MODULO_A_FUNDO: Record<string, string> = {};
+[1, 2, 3, 4].forEach((n) => { MODULO_A_FUNDO[`AQ1-${n}`] = "ARENA AZUL"; });
+[1, 2, 3, 4, 5].forEach((n) => { MODULO_A_FUNDO[`AQ2-${n}`] = "QURI ALLPA"; });
+[6, 7, 8, 9, 10, 11, 16, 17, 18].forEach((n) => { MODULO_A_FUNDO[`AQ2-${n}`] = "KAWSAY ALLPA"; });
+[12, 13, 14, 15].forEach((n) => { MODULO_A_FUNDO[`AQ2-${n}`] = "AYLLU ALLPA"; });
+
 function getFundoColor(name: string): string {
   const key = Object.keys(FUNDO_COLORS).find((k) => name.toUpperCase().includes(k.toUpperCase()));
   return key ? FUNDO_COLORS[key] : "#94a3b8";
+}
+
+function resolveFundo(s: { fundo: string; usuario: string | null }, devMap: Record<string, import("../services/supabase").Dispositivo>): string {
+  if (s.fundo) return s.fundo;
+  if (!s.usuario || !devMap[s.usuario]) return "";
+  const mods = devMap[s.usuario].fundos_asignados || [];
+  if (mods.length === 0) return "";
+  const fundo = MODULO_A_FUNDO[mods[0]];
+  return fundo || "";
+}
+
+function resolveDeviceName(usuario: string | null, devMap: Record<string, import("../services/supabase").Dispositivo>): string | null {
+  if (!usuario || !devMap[usuario]) return usuario;
+  return devMap[usuario].nombre || usuario;
 }
 
 function formatDate(iso: string) {
@@ -52,9 +77,10 @@ function formatDist(m: number) {
   return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
 }
 
-export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFilter, onDateFilterChange, multiTracks }: Props) {
+export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFilter, onDateFilterChange, multiTracks, highlightFundos = [], deviceMap = {}, paradas = [] }: Props) {
   const filtered = sessions.filter((s) => {
-    if (filter && !s.fundo.toUpperCase().includes(filter.toUpperCase())) return false;
+    const fundo = resolveFundo(s, deviceMap);
+    if (filter && !fundo.toUpperCase().includes(filter.toUpperCase())) return false;
     if (dateFilter) {
       const d = new Date(s.iniciado_en);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -62,13 +88,20 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
     }
     return true;
   });
-  const fundoNames = [...new Set(sessions.map((s) => s.fundo))];
+  const fundoNames = [...new Set(sessions.map((s) => resolveFundo(s, deviceMap)))].filter(Boolean);
 
   const avgSpeed = points.length > 1
     ? (distance / ((new Date(points[points.length - 1].grabado_en).getTime() - new Date(points[0].grabado_en).getTime()) / 1000)) * 3.6
     : 0;
 
   const totalLotes = Object.values(fundoCounts).reduce((a, b) => a + b, 0);
+  const [showRecorridos, setShowRecorridos] = useState(true);
+  const [showResumen, setShowResumen] = useState(true);
+  const [showFundos, setShowFundos] = useState(true);
+  const [showDetalle, setShowDetalle] = useState(true);
+  const [showTimeline, setShowTimeline] = useState(true);
+  const [showTrackTimeline, setShowTrackTimeline] = useState(true);
+  const [showParadas, setShowParadas] = useState(true);
 
   return (
     <aside className="sidebar">
@@ -76,16 +109,19 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
         <>
           <button className="back-sidebar-btn" onClick={onBack}>← Todos los recorridos</button>
           <div className="card">
-            <div className="card-header">
+            <div className="card-header card-header-toggle" onClick={() => setShowDetalle(!showDetalle)}>
               <h3>Detalle del recorrido</h3>
-              <span className={liveMode ? "badge badge-live" : "badge"}>
-                {liveMode ? "En vivo" : "Completada"}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className={liveMode ? "badge badge-live" : "badge"}>
+                  {liveMode ? "En vivo" : "Completada"}
+                </span>
+                <span className="toggle-arrow">{showDetalle ? "▲" : "▼"}</span>
+              </div>
             </div>
-            <div className="card-body">
+            {showDetalle && <div className="card-body">
               <div className="info-row">
                 <span className="label">Fundo</span>
-                <span className="value fundo-tag">{selectedSession.fundo}</span>
+                <span className="value fundo-tag">{resolveFundo(selectedSession, deviceMap) || "—"}</span>
               </div>
               <div className="info-row">
                 <span className="label">Fecha</span>
@@ -97,7 +133,7 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
               </div>
               <div className="info-row">
                 <span className="label">Usuario</span>
-                <span className="value">{selectedSession.usuario || "—"}</span>
+                <span className="value">{resolveDeviceName(selectedSession.usuario, deviceMap) || "—"}</span>
               </div>
               <div className="info-row">
                 <span className="label">Dispositivo</span>
@@ -107,12 +143,15 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                 <span className="label">ID</span>
                 <span className="value mono">{selectedSession.id.slice(0, 8)}</span>
               </div>
-            </div>
+            </div>}
           </div>
 
           <div className="card">
-            <div className="card-header"><h3>Timeline</h3></div>
-            <div className="card-body">
+            <div className="card-header card-header-toggle" onClick={() => setShowTimeline(!showTimeline)}>
+              <h3>Timeline</h3>
+              <span className="toggle-arrow">{showTimeline ? "▲" : "▼"}</span>
+            </div>
+            {showTimeline && <div className="card-body">
               <div className="timeline">
                 <div className="timeline-item">
                   <div className="timeline-dot" style={{ background: "#22c55e" }} />
@@ -140,8 +179,72 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
           </div>
+
+          {paradas.length > 0 && (
+            <div className="card">
+              <div className="card-header card-header-toggle" onClick={() => setShowParadas(!showParadas)}>
+                <h3>Paradas</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="count-badge">{paradas.length}</span>
+                  <span className="toggle-arrow">{showParadas ? "▲" : "▼"}</span>
+                </div>
+              </div>
+              {showParadas && <div className="card-body">
+                <div className="paradas-list">
+                  {paradas.map((p, i) => {
+                    const dur = p.fin
+                      ? Math.round((new Date(p.fin).getTime() - new Date(p.inicio).getTime()) / 60000)
+                      : null;
+                    return (
+                      <div className="parada-item" key={p.id}>
+                        <div className="parada-num">{i + 1}</div>
+                        <div className="parada-info">
+                          <div className="parada-title">
+                            Parada {i + 1}
+                            {dur !== null && <span className="parada-dur">{dur} min</span>}
+                          </div>
+                          <div className="parada-time">
+                            {new Date(p.inicio).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
+                            {p.fin && ` — ${new Date(p.fin).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`}
+                          </div>
+                          {p.nota && <div className="parada-nota">{p.nota}</div>}
+                          {p.fotos.length > 0 && (
+                            <div className="parada-fotos">
+                              {p.fotos.map((f) => (
+                                <a key={f.id} href={f.url} target="_blank" rel="noreferrer">
+                                  <img src={f.url} alt="" className="parada-foto" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>}
+            </div>
+          )}
+
+          {highlightFundos.length > 0 && (
+            <div className="card">
+              <div className="card-header"><h3>Zona asignada</h3></div>
+              <div className="card-body">
+                <div className="offline-legend">
+                  <div className="offline-legend-item">
+                    <span className="offline-legend-line" style={{ background: "#22c55e" }} />
+                    <span>Dentro del módulo</span>
+                  </div>
+                  <div className="offline-legend-item">
+                    <span className="offline-legend-line" style={{ background: "#ef4444" }} />
+                    <span>Fuera del módulo</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {points.some((p) => p.offline) && (
             <div className="card">
@@ -165,16 +268,27 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
             </div>
           )}
 
-          <TrackTimeline points={points} totalDistance={distance} currentIndex={cursorIndex} onIndexChange={onCursorChange} />
+          <div className="card">
+            <div className="card-header card-header-toggle" onClick={() => setShowTrackTimeline(!showTrackTimeline)}>
+              <h3>Línea de tiempo</h3>
+              <span className="toggle-arrow">{showTrackTimeline ? "▲" : "▼"}</span>
+            </div>
+            {showTrackTimeline && <div className="card-body">
+              <TrackTimeline points={points} totalDistance={distance} currentIndex={cursorIndex} onIndexChange={onCursorChange} />
+            </div>}
+          </div>
         </>
       ) : (
         <>
           <div className="card">
-            <div className="card-header">
+            <div className="card-header card-header-toggle" onClick={() => setShowRecorridos(!showRecorridos)}>
               <h3>Recorridos</h3>
-              <span className="count-badge">{filtered.length}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="count-badge">{filtered.length}</span>
+                <span className="toggle-arrow">{showRecorridos ? "▲" : "▼"}</span>
+              </div>
             </div>
-            <div className="card-body">
+            {showRecorridos && <div className="card-body">
               <select className="filter-sidebar" value={filter} onChange={(e) => onFilterChange(e.target.value)}>
                 <option value="">Todos los fundos</option>
                 {fundoNames.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -186,25 +300,29 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                 onChange={(e) => onDateFilterChange(e.target.value)}
               />
               <div className="session-list">
-                {filtered.map((s) => (
+                {filtered.map((s) => {
+                  const fundo = resolveFundo(s, deviceMap);
+                  const devName = resolveDeviceName(s.usuario, deviceMap);
+                  return (
                   <button key={s.id} className={`session-btn ${!s.terminado_en ? "session-btn-live" : ""}`} onClick={() => onSelectSession(s)}>
                     <div className="session-btn-left">
                       <div className="session-btn-fundo">
                         {!s.terminado_en && <span className="session-live-dot" />}
-                        <span className="fundo-color-dot" style={{ background: getFundoColor(s.fundo) }} />
-                        {s.fundo}
+                        <span className="fundo-color-dot" style={{ background: getFundoColor(fundo) }} />
+                        {fundo || "Sin fundo"}
                       </div>
                       <div className="session-btn-date">{formatDate(s.iniciado_en)}</div>
-                      {s.usuario && <div className="session-btn-user">{s.usuario}</div>}
+                      {devName && <div className="session-btn-user">{devName}</div>}
                     </div>
                     <div className="session-btn-duration">
                       {!s.terminado_en ? "En vivo" : durationMin(s.iniciado_en, s.terminado_en)}
                     </div>
                   </button>
-                ))}
+                  );
+                })}
                 {filtered.length === 0 && <p className="empty">No hay recorridos</p>}
               </div>
-            </div>
+            </div>}
           </div>
 
           {multiTracks.length > 0 && (
@@ -230,8 +348,11 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
           )}
 
           <div className="card">
-            <div className="card-header"><h3>Resumen</h3></div>
-            <div className="card-body">
+            <div className="card-header card-header-toggle" onClick={() => setShowResumen(!showResumen)}>
+              <h3>Resumen</h3>
+              <span className="toggle-arrow">{showResumen ? "▲" : "▼"}</span>
+            </div>
+            {showResumen && <div className="card-body">
               <div className="stats-grid">
                 <div className="stat-item">
                   <svg className="stat-svg accent-stroke" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
@@ -258,17 +379,20 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                   <div className="stat-label">Velocidad prom.</div>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         </>
       )}
 
       <div className="card">
-        <div className="card-header">
+        <div className="card-header card-header-toggle" onClick={() => setShowFundos(!showFundos)}>
           <h3>Fundos</h3>
-          <span style={{ fontSize: 12, color: "var(--t3)", fontWeight: 500 }}>Total: {totalLotes} lotes</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--t3)", fontWeight: 500 }}>Total: {totalLotes} lotes</span>
+            <span className="toggle-arrow">{showFundos ? "▲" : "▼"}</span>
+          </div>
         </div>
-        <div className="card-body">
+        {showFundos && <div className="card-body">
           <div className="fundo-list">
             {Object.entries(FUNDO_COLORS).map(([name, color]) => (
               <div className="fundo-item" key={name}>
@@ -278,7 +402,7 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
               </div>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
     </aside>
   );

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import L from "leaflet";
 import type { PolygonData } from "../services/kmzLoader";
-import type { GpsPoint } from "../services/supabase";
+import type { GpsPoint, Parada, ParadaFoto } from "../services/supabase";
 import "leaflet/dist/leaflet.css";
 
 export interface TrackData {
@@ -11,12 +12,27 @@ export interface TrackData {
   label: string;
 }
 
+export interface ParadaConFotos extends Parada {
+  fotos: ParadaFoto[];
+}
+
 interface Props {
   polygons: PolygonData[];
   points: GpsPoint[];
   cursorIndex: number;
   liveMode: boolean;
   multiTracks?: TrackData[];
+  highlightFundos?: string[];
+  paradas?: ParadaConFotos[];
+}
+
+function paradaIcon(num: number) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:#ff9800;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${num}</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
 }
 
 function FitBounds({ points }: { points: GpsPoint[] }) {
@@ -87,57 +103,8 @@ function LiveFollow({ points, index, liveMode }: { points: GpsPoint[]; index: nu
   return null;
 }
 
-function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function splitAtJumps(coords: [number, number][], maxGapM = 200): [number, number][][] {
-  if (coords.length < 2) return coords.length ? [coords] : [];
-  const segments: [number, number][][] = [];
-  let seg: [number, number][] = [coords[0]];
-  for (let i = 1; i < coords.length; i++) {
-    const dist = haversine(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]);
-    if (dist > maxGapM) {
-      if (seg.length > 1) segments.push(seg);
-      seg = [coords[i]];
-    } else {
-      seg.push(coords[i]);
-    }
-  }
-  if (seg.length > 1) segments.push(seg);
-  return segments;
-}
-
-interface OfflineSegment {
-  coords: [number, number][];
-  offline: boolean;
-}
-
-function splitByOffline(points: GpsPoint[]): OfflineSegment[] {
-  if (points.length === 0) return [];
-  const segments: OfflineSegment[] = [];
-  let current: OfflineSegment = { coords: [[points[0].lat, points[0].lng]], offline: !!points[0].offline };
-  for (let i = 1; i < points.length; i++) {
-    const isOff = !!points[i].offline;
-    const dist = haversine(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng);
-    if (dist > 200) {
-      if (current.coords.length > 1) segments.push(current);
-      current = { coords: [[points[i].lat, points[i].lng]], offline: isOff };
-    } else if (isOff !== current.offline) {
-      current.coords.push([points[i].lat, points[i].lng]);
-      segments.push(current);
-      current = { coords: [[points[i].lat, points[i].lng]], offline: isOff };
-    } else {
-      current.coords.push([points[i].lat, points[i].lng]);
-    }
-  }
-  if (current.coords.length > 1) segments.push(current);
-  return segments;
+function splitAtJumps(coords: [number, number][]): [number, number][][] {
+  return coords.length < 2 ? [] : [coords];
 }
 
 function FitMultiBounds({ tracks }: { tracks: TrackData[] }) {
@@ -157,15 +124,12 @@ function FitMultiBounds({ tracks }: { tracks: TrackData[] }) {
   return null;
 }
 
-export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMode, multiTracks }: Props) {
+export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMode, multiTracks, highlightFundos = [], paradas = [] }: Props) {
   const isMulti = multiTracks && multiTracks.length > 0 && points.length === 0;
 
   const cursorIndex = Math.min(rawIdx, Math.max(0, points.length - 1));
-  const trackCoords = points.map((p) => [p.lat, p.lng] as [number, number]);
-  const remainingCoords = trackCoords.slice(cursorIndex);
-  const remainingSegments = splitAtJumps(remainingCoords);
-  const walkedPoints = points.slice(0, cursorIndex + 1);
-  const offlineSegments = splitByOffline(walkedPoints);
+  const walkedCoords = points.slice(0, cursorIndex + 1).map((p) => [p.lat, p.lng] as [number, number]);
+  const remainingCoords = points.slice(cursorIndex).map((p) => [p.lat, p.lng] as [number, number]);
   const center: [number, number] = points.length
     ? [points[0].lat, points[0].lng]
     : multiTracks && multiTracks.length > 0 && multiTracks[0].points.length > 0
@@ -181,13 +145,21 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
         maxZoom={21}
       />
 
-      {polygons.map((p, i) => (
-        <Polygon
-          key={i}
-          positions={p.coords}
-          pathOptions={{ color: p.color, weight: 1.5, fillOpacity: 0.15, fillColor: p.color }}
-        />
-      ))}
+      {polygons.map((p, i) => {
+        const isHighlighted = highlightFundos.length > 0 && p.modulo && highlightFundos.includes(p.modulo);
+        return (
+          <Polygon
+            key={i}
+            positions={p.coords}
+            pathOptions={{
+              color: isHighlighted ? "#ffd700" : p.color,
+              weight: isHighlighted ? 3 : 1.5,
+              fillOpacity: isHighlighted ? 0.4 : 0.15,
+              fillColor: isHighlighted ? "#ffd700" : p.color,
+            }}
+          />
+        );
+      })}
 
       {isMulti && multiTracks!.map((track) => {
         const coords = track.points.map((p) => [p.lat, p.lng] as [number, number]);
@@ -207,16 +179,19 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
         );
       })}
 
-      {!isMulti && remainingSegments.map((seg, i) => (
-        <Polyline key={`rem${i}`} positions={seg} pathOptions={{ color: "#00e5ff", weight: 3, opacity: 0.2, dashArray: "6 4" }} />
-      ))}
+      {!isMulti && remainingCoords.length > 1 && (
+        <>
+          <Polyline positions={remainingCoords} pathOptions={{ color: "#00e5ff", weight: 10, opacity: 0.15 }} />
+          <Polyline positions={remainingCoords} pathOptions={{ color: "#00e5ff", weight: 3, opacity: 0.2, dashArray: "6 4" }} />
+        </>
+      )}
 
-      {!isMulti && offlineSegments.map((seg, i) => (
-        <React.Fragment key={`walk${i}`}>
-          <Polyline positions={seg.coords} pathOptions={{ color: seg.offline ? "#ff9800" : "#00e5ff", weight: 12, opacity: 0.15 }} />
-          <Polyline positions={seg.coords} pathOptions={{ color: seg.offline ? "#ff9800" : "#00e5ff", weight: 4, opacity: 0.9, dashArray: seg.offline ? "8 6" : undefined }} />
-        </React.Fragment>
-      ))}
+      {!isMulti && walkedCoords.length > 1 && (
+        <>
+          <Polyline positions={walkedCoords} pathOptions={{ color: "#00e5ff", weight: 10, opacity: 0.15 }} />
+          <Polyline positions={walkedCoords} pathOptions={{ color: "#00e5ff", weight: 4, opacity: 0.9 }} />
+        </>
+      )}
 
       {!isMulti && points.length > 0 && (
         <CircleMarker center={[points[0].lat, points[0].lng]} radius={7} pathOptions={{ color: "#fff", fillColor: "#22c55e", fillOpacity: 1, weight: 3 }} />
@@ -228,6 +203,30 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
       {!isMulti && cursorPt && (
         <CircleMarker center={[cursorPt.lat, cursorPt.lng]} radius={9} pathOptions={{ color: "#fff", fillColor: "#00e5ff", fillOpacity: 1, weight: 3 }} />
       )}
+
+      {!isMulti && paradas.map((p, i) => (
+        <Marker key={p.id} position={[p.lat, p.lng]} icon={paradaIcon(i + 1)}>
+          <Popup>
+            <div style={{ minWidth: 160 }}>
+              <strong>Parada {i + 1}</strong>
+              <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                {new Date(p.inicio).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
+                {p.fin && ` — ${new Date(p.fin).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}`}
+              </div>
+              {p.nota && <div style={{ fontSize: 12, marginTop: 4 }}>{p.nota}</div>}
+              {p.fotos.length > 0 && (
+                <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                  {p.fotos.map((f) => (
+                    <a key={f.id} href={f.url} target="_blank" rel="noreferrer">
+                      <img src={f.url} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 4 }} />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
 
       {isMulti ? <FitMultiBounds tracks={multiTracks!} /> : <FitBounds points={points} />}
       {!isMulti && points.length > 0 && <LiveFollow points={points} index={cursorIndex} liveMode={liveMode} />}

@@ -225,6 +225,23 @@ html, body, #root {
   background: #f0f2f5;
 }
 
+/* ── Sidebar wrapper ── */
+.sidebar-wrapper {
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.sidebar-wrapper.sidebar-open {
+  width: 320px;
+  min-width: 320px;
+}
+
+.sidebar-wrapper.sidebar-closed {
+  width: 0;
+  min-width: 0;
+}
+
 .leaflet-container {
   background: #e8ecf1;
 }
@@ -282,4 +299,73 @@ html, body, #root {
   border-color: #ef4444;
   color: #ef4444;
   background: #fef2f2;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .topbar {
+    padding: 0 12px;
+  }
+
+  .topbar h1 {
+    font-size: 14px;
+  }
+
+  .topbar-sub {
+    display: none;
+  }
+
+  .topbar-right {
+    gap: 6px;
+  }
+
+  .user-badge {
+    display: none;
+  }
+
+  .admin-btn, .logout-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .main {
+    position: relative;
+  }
+
+  .sidebar-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 1000;
+    background: #fff;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+  }
+
+  .sidebar-wrapper.sidebar-closed {
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    height: 50px;
+    padding: 0 10px;
+  }
+
+  .logo {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .topbar-left {
+    gap: 8px;
+  }
+
+  .live-badge {
+    font-size: 9px;
+    padding: 4px 8px;
+  }
 }
