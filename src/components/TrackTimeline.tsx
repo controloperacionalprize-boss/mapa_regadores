@@ -70,6 +70,7 @@ export default function TrackTimeline({ points, totalDistance: _totalDistance, c
       if (s === 1) return 2;
       if (s === 2) return 4;
       if (s === 4) return 8;
+      if (s === 8) return 16;
       return 1;
     });
   }, []);
@@ -91,10 +92,14 @@ export default function TrackTimeline({ points, totalDistance: _totalDistance, c
       </div>
 
       <div className="track-tl-bar-wrap">
-        <div className="track-tl-progress-bar">
-          <div className="track-tl-progress-fill" style={{ width: `${progress}%` }} />
-          <div className="track-tl-thumb" style={{ left: `${progress}%` }} />
-        </div>
+        <input
+          type="range"
+          min={0}
+          max={points.length - 1}
+          value={currentIndex}
+          onChange={(e) => onIndexChange(Number(e.target.value))}
+          className="track-tl-range-full"
+        />
         <div className="track-tl-labels">
           <span>{fmt(points[0].grabado_en)}</span>
           <span>{fmt(points[points.length - 1].grabado_en)}</span>
@@ -108,14 +113,6 @@ export default function TrackTimeline({ points, totalDistance: _totalDistance, c
         <button className="track-tl-speed-btn" onClick={cycleSpeed}>
           x{speed}
         </button>
-        <input
-          type="range"
-          min={0}
-          max={points.length - 1}
-          value={currentIndex}
-          onChange={(e) => { setPlaying(false); onIndexChange(Number(e.target.value)); }}
-          className="track-tl-range"
-        />
         <span className="track-tl-counter">{currentIndex + 1} / {points.length}</span>
       </div>
     </div>
