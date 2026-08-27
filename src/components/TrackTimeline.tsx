@@ -56,7 +56,6 @@ export default function TrackTimeline({ points, totalDistance: _totalDistance, c
   const totalSec = (tEnd - t0) / 1000;
   const curTime = new Date(points[currentIndex].grabado_en).getTime();
   const curElapsed = (curTime - t0) / 1000;
-  const progress = points.length > 1 ? (currentIndex / (points.length - 1)) * 100 : 0;
 
   const togglePlay = useCallback(() => {
     if (currentIndex >= points.length - 1) {
