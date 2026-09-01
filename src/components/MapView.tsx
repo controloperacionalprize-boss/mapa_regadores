@@ -107,6 +107,17 @@ function splitAtJumps(coords: [number, number][]): [number, number][][] {
   return coords.length < 2 ? [] : [coords];
 }
 
+function InvalidateOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 function FitMultiBounds({ tracks }: { tracks: TrackData[] }) {
   const map = useMap();
   const didFit = useRef(false);
@@ -139,6 +150,7 @@ export default function MapView({ polygons, points, cursorIndex: rawIdx, liveMod
 
   return (
     <MapContainer center={center} zoom={17} style={{ width: "100%", height: "100%" }} zoomControl={false}>
+      <InvalidateOnResize />
       <TileLayer
         url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
         attribution="Google"

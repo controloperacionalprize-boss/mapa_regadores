@@ -24,6 +24,8 @@ interface Props {
   highlightFundos?: string[];
   deviceMap?: Record<string, Dispositivo>;
   paradas?: ParadaConFotos[];
+  isAdmin?: boolean;
+  onDeleteSession?: (id: string) => void;
 }
 
 const FUNDO_COLORS: Record<string, string> = {
@@ -77,7 +79,7 @@ function formatDist(m: number) {
   return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
 }
 
-export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFilter, onDateFilterChange, multiTracks, highlightFundos = [], deviceMap = {}, paradas = [] }: Props) {
+export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFilter, onDateFilterChange, multiTracks, highlightFundos = [], deviceMap = {}, paradas = [], isAdmin = false, onDeleteSession }: Props) {
   const filtered = sessions.filter((s) => {
     const fundo = resolveFundo(s, deviceMap);
     if (filter && !fundo.toUpperCase().includes(filter.toUpperCase())) return false;
@@ -143,6 +145,33 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                 <span className="label">ID</span>
                 <span className="value mono">{selectedSession.id.slice(0, 8)}</span>
               </div>
+              <hr style={{ border: "none", borderTop: "1px solid var(--border, #333)", margin: "10px 0" }} />
+              <div className="stats-grid" style={{ marginTop: 4 }}>
+                <div className="stat-item">
+                  <div className="stat-value accent">{formatDist(distance || 0)}</div>
+                  <div className="stat-label">Distancia</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value green">{durationMin(selectedSession.iniciado_en, selectedSession.terminado_en)}</div>
+                  <div className="stat-label">Duración</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value orange">{avgSpeed > 0 ? avgSpeed.toFixed(1) + " km/h" : "—"}</div>
+                  <div className="stat-label">Vel. prom.</div>
+                </div>
+              </div>
+              {isAdmin && onDeleteSession && (
+                <button
+                  className="delete-session-btn"
+                  onClick={() => {
+                    if (window.confirm("¿Seguro que deseas eliminar este recorrido? Se borrarán todos los puntos, paradas y fotos asociados.")) {
+                      onDeleteSession(selectedSession.id);
+                    }
+                  }}
+                >
+                  Eliminar recorrido
+                </button>
+              )}
             </div>}
           </div>
 

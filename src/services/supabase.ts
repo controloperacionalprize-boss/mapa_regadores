@@ -189,6 +189,17 @@ export async function getSessions(): Promise<Session[]> {
   return data || [];
 }
 
+export async function deleteSession(sessionId: string): Promise<void> {
+  await supabase.from("parada_fotos").delete().in(
+    "parada_id",
+    (await supabase.from("paradas").select("id").eq("sesion_id", sessionId)).data?.map((p) => p.id) || []
+  );
+  await supabase.from("paradas").delete().eq("sesion_id", sessionId);
+  await supabase.from("punto_gps").delete().eq("sesion_id", sessionId);
+  const { error } = await supabase.from("sesiones_gps").delete().eq("id", sessionId);
+  if (error) throw error;
+}
+
 export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
   const { data, error } = await supabase.rpc("get_all_session_points", {
     p_sesion_id: sessionId,

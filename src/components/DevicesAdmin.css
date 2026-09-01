@@ -43,6 +43,27 @@
   padding: 4px 8px;
 }
 
+.devices-search {
+  padding: 0 24px 12px;
+}
+.devices-search input {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #f8f9fb;
+  transition: border-color 0.15s;
+}
+.devices-search input:focus {
+  border-color: #4A90E2;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
 .devices-loading,
 .devices-empty {
   padding: 40px;

@@ -20,6 +20,7 @@ export default function DevicesAdmin({ onClose }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editFundos, setEditFundos] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -94,13 +95,26 @@ export default function DevicesAdmin({ onClose }: Props) {
           <button className="devices-close" onClick={onClose}>✕</button>
         </div>
 
+        <div className="devices-search">
+          <input
+            type="text"
+            placeholder="Buscar por nombre, modelo o ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         {loading ? (
           <p className="devices-loading">Cargando...</p>
         ) : devices.length === 0 ? (
           <p className="devices-empty">No hay dispositivos registrados. Abre la app móvil para que se registre automáticamente.</p>
         ) : (
           <div className="devices-list">
-            {devices.map((d) => (
+            {devices.filter((d) => {
+              if (!search) return true;
+              const q = search.toLowerCase();
+              return (d.nombre || "").toLowerCase().includes(q) || (d.modelo || "").toLowerCase().includes(q) || d.android_id.toLowerCase().includes(q);
+            }).map((d) => (
               <div key={d.id} className={`devices-card ${!d.activo ? "devices-card-inactive" : ""}`}>
                 <div className="devices-card-top">
                   <div className="devices-card-info">

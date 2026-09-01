@@ -15,6 +15,7 @@ export default function UsersAdmin({ onClose }: Props) {
   const [rol, setRol] = useState("usuario");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -95,6 +96,15 @@ export default function UsersAdmin({ onClose }: Props) {
           </button>
         </form>
 
+        <div className="users-search">
+          <input
+            type="text"
+            placeholder="Buscar por email o nombre..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         {error && <p className="users-error">{error}</p>}
 
         {loading ? (
@@ -112,7 +122,11 @@ export default function UsersAdmin({ onClose }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {usuarios.map((u) => (
+                {usuarios.filter((u) => {
+                  if (!search) return true;
+                  const q = search.toLowerCase();
+                  return u.email.toLowerCase().includes(q) || (u.nombre || "").toLowerCase().includes(q);
+                }).map((u) => (
                   <tr key={u.id} className={u.activo ? "" : "users-inactive"}>
                     <td>{u.email}</td>
                     <td>{u.nombre || "—"}</td>

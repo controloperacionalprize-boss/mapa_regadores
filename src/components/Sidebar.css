@@ -392,6 +392,25 @@
   background: #eff6ff;
 }
 
+.delete-session-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.delete-session-btn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
 .filter-sidebar {
   width: 100%;
   padding: 8px 12px;
@@ -408,6 +427,27 @@
 
 .filter-sidebar:hover {
   border-color: var(--accent);
+}
+
+.export-excel-btn {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #22763a;
+  background: #22763a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+}
+.export-excel-btn:hover {
+  background: #1a5c2e;
+}
+.export-excel-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .session-btn-user {

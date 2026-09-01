@@ -86,6 +86,149 @@ html, body, #root {
   gap: 12px;
 }
 
+/* ── App body with side nav ── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-nav {
+  width: 72px;
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.side-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border: none;
+  background: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 62px;
+}
+
+.side-nav-btn svg {
+  width: 20px;
+  height: 20px;
+  color: #64748b;
+  transition: color 0.15s;
+}
+
+.side-nav-btn span {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+  transition: color 0.15s;
+}
+
+.side-nav-btn:hover svg,
+.side-nav-btn:hover span {
+  color: #94a3b8;
+}
+
+.side-nav-btn.side-nav-active {
+  background: rgba(74, 144, 226, 0.15);
+}
+
+.side-nav-btn.side-nav-active svg,
+.side-nav-btn.side-nav-active span {
+  color: #4A90E2;
+}
+
+/* ── Views inside .main (not modal) ── */
+.main > .users-overlay,
+.main > .devices-overlay {
+  position: relative;
+  inset: unset;
+  background: #f8f9fb;
+  z-index: auto;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+}
+
+.main > .users-overlay > .users-modal,
+.main > .devices-overlay > .devices-modal {
+  width: 100%;
+  max-width: 960px;
+  max-height: none;
+  margin: 0 auto;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+}
+
+.main > .users-overlay > .users-modal .users-close,
+.main > .devices-overlay > .devices-modal .devices-close {
+  display: none;
+}
+
+/* ── Side nav responsive ── */
+@media (max-width: 768px) {
+  .side-nav {
+    width: 100%;
+    flex-direction: row;
+    padding: 0;
+    gap: 0;
+    order: 99;
+    border-top: 1px solid #e5e7eb;
+  }
+  .side-nav-btn {
+    flex: 1;
+    border-radius: 0;
+    padding: 8px 4px;
+    width: auto;
+  }
+  .side-nav-btn svg { width: 18px; height: 18px; }
+  .side-nav-btn span { font-size: 9px; }
+  .app-body {
+    flex-direction: column;
+  }
+  .topbar {
+    padding: 0 12px;
+  }
+  .topbar h1 { font-size: 14px; }
+  .topbar-sub { display: none; }
+  .logo { width: 32px; height: 32px; font-size: 16px; border-radius: 8px; }
+  .user-badge { display: none; }
+
+  .reportes-view { padding: 16px; }
+  .reportes-kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .reportes-filters { flex-direction: column; gap: 8px; }
+  .filter-group input, .filter-group select { min-width: unset; width: 100%; }
+  .reportes-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .export-btn { width: 100%; }
+
+  .main > .users-overlay,
+  .main > .devices-overlay {
+    padding: 12px;
+  }
+  .main > .users-overlay > .users-modal,
+  .main > .devices-overlay > .devices-modal {
+    max-width: 100%;
+  }
+}
+
 /* ── Socket badge ── */
 .socket-badge {
   padding: 6px 14px;

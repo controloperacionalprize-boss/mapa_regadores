@@ -95,6 +95,27 @@
 .users-form button:hover { background: #357ABD; }
 .users-form button:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.users-search {
+  padding: 0 24px 12px;
+}
+.users-search input {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #f8f9fb;
+  transition: border-color 0.15s;
+}
+.users-search input:focus {
+  border-color: #4A90E2;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
 .users-error {
   color: #dc2626;
   font-size: 13px;

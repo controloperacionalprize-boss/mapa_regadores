@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getSessions, getSessionPoints, getMultiSessionPoints, supabase, checkUsuarioAutorizado, getDispositivoByAndroidId, getDispositivos, getParadas, getParadaFotos } from "./services/supabase";
+import { getSessions, getSessionPoints, getMultiSessionPoints, supabase, checkUsuarioAutorizado, getDispositivoByAndroidId, getDispositivos, getParadas, getParadaFotos, deleteSession } from "./services/supabase";
 import type { Session, GpsPoint, UsuarioAutorizado, Dispositivo } from "./services/supabase";
 import type { ParadaConFotos } from "./components/MapView";
 import { loadKmzPolygons } from "./services/kmzLoader";
@@ -10,7 +10,10 @@ import Sidebar from "./components/Sidebar";
 import LoginPage from "./components/LoginPage";
 import UsersAdmin from "./components/UsersAdmin";
 import DevicesAdmin from "./components/DevicesAdmin";
+import ReportesView from "./components/ReportesView";
 import "./App.css";
+
+type NavView = "mapa" | "reportes" | "usuarios" | "dispositivos";
 
 const TRACK_COLORS = [
   "#00e5ff", "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff",
@@ -78,6 +81,7 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
   const [showUsersAdmin, setShowUsersAdmin] = useState(false);
   const [showDevicesAdmin, setShowDevicesAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeView, setActiveView] = useState<NavView>("mapa");
   const [highlightFundos, setHighlightFundos] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deviceMap, setDeviceMap] = useState<Record<string, Dispositivo>>({});
@@ -267,45 +271,96 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
         </div>
         <div className="topbar-right">
           {liveMode && <span className="live-badge">EN VIVO</span>}
-          {isAdmin && <button className="admin-btn" onClick={() => setShowDevicesAdmin(true)}>Dispositivos</button>}
-          {isAdmin && <button className="admin-btn" onClick={() => setShowUsersAdmin(true)}>Usuarios</button>}
           <span className="user-badge">{usuario.email}</span>
           <button className="logout-btn" onClick={onLogout}>Salir</button>
         </div>
       </header>
-      <div className="main">
-        <div className={`sidebar-wrapper ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
-        <Sidebar
-          sessions={sessions}
-          selectedSession={selected}
-          points={points}
-          distance={distance}
-          onSelectSession={selectSession}
-          onBack={goBack}
-          fundoCounts={fundoCounts}
-          cursorIndex={cursorIndex}
-          onCursorChange={setCursorIndex}
-          liveMode={liveMode}
-          filter={filter}
-          onFilterChange={setFilter}
-          dateFilter={dateFilter}
-          onDateFilterChange={setDateFilter}
-          multiTracks={multiTracks}
-          highlightFundos={highlightFundos}
-          deviceMap={deviceMap}
-          paradas={paradas}
-        />
+
+      <div className="app-body">
+        <nav className="side-nav">
+          <button className={`side-nav-btn ${activeView === "mapa" ? "side-nav-active" : ""}`} onClick={() => setActiveView("mapa")} title="Mapa">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16"/><path d="M16 6v16"/></svg>
+            <span>Mapa</span>
+          </button>
+          <button className={`side-nav-btn ${activeView === "reportes" ? "side-nav-active" : ""}`} onClick={() => setActiveView("reportes")} title="Reportes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Reportes</span>
+          </button>
+          {isAdmin && <button className={`side-nav-btn ${activeView === "usuarios" ? "side-nav-active" : ""}`} onClick={() => setActiveView("usuarios")} title="Usuarios">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Usuarios</span>
+          </button>}
+          {isAdmin && <button className={`side-nav-btn ${activeView === "dispositivos" ? "side-nav-active" : ""}`} onClick={() => setActiveView("dispositivos")} title="Dispositivos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <span>Dispositivos</span>
+          </button>}
+        </nav>
+
+        <div className="app-content">
+      {activeView === "mapa" && (
+        <div className="main">
+          <div className={`sidebar-wrapper ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
+          <Sidebar
+            sessions={sessions}
+            selectedSession={selected}
+            points={points}
+            distance={distance}
+            onSelectSession={selectSession}
+            onBack={goBack}
+            fundoCounts={fundoCounts}
+            cursorIndex={cursorIndex}
+            onCursorChange={setCursorIndex}
+            liveMode={liveMode}
+            filter={filter}
+            onFilterChange={setFilter}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+            multiTracks={multiTracks}
+            highlightFundos={highlightFundos}
+            deviceMap={deviceMap}
+            paradas={paradas}
+            isAdmin={isAdmin}
+            onDeleteSession={async (id) => {
+              try {
+                await deleteSession(id);
+                setSessions((prev) => prev.filter((s) => s.id !== id));
+                setSelected(null);
+                setPoints([]);
+              } catch (e: any) {
+                alert("Error al eliminar: " + (e?.message || e));
+              }
+            }}
+          />
+          </div>
+          <div className="map-area">
+            {loading ? (
+              <div className="loading">Cargando datos...</div>
+            ) : (
+              <MapView polygons={polygons} points={points} cursorIndex={cursorIndex} liveMode={liveMode} multiTracks={multiTracks} highlightFundos={highlightFundos} paradas={paradas} />
+            )}
+          </div>
         </div>
-        <div className="map-area">
-          {loading ? (
-            <div className="loading">Cargando datos...</div>
-          ) : (
-            <MapView polygons={polygons} points={points} cursorIndex={cursorIndex} liveMode={liveMode} multiTracks={multiTracks} highlightFundos={highlightFundos} paradas={paradas} />
-          )}
+      )}
+
+      {activeView === "reportes" && (
+        <div className="main" style={{ overflow: "auto", flex: 1 }}>
+          <ReportesView sessions={sessions} deviceMap={deviceMap} />
+        </div>
+      )}
+
+      {activeView === "usuarios" && (
+        <div className="main" style={{ overflow: "auto", flex: 1 }}>
+          <UsersAdmin onClose={() => setActiveView("mapa")} />
+        </div>
+      )}
+
+      {activeView === "dispositivos" && (
+        <div className="main" style={{ overflow: "auto", flex: 1 }}>
+          <DevicesAdmin onClose={() => setActiveView("mapa")} />
+        </div>
+      )}
         </div>
       </div>
-      {showUsersAdmin && <UsersAdmin onClose={() => setShowUsersAdmin(false)} />}
-      {showDevicesAdmin && <DevicesAdmin onClose={() => setShowDevicesAdmin(false)} />}
     </div>
   );
 }
