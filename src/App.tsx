@@ -78,8 +78,6 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
   const [filter, setFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [multiTracks, setMultiTracks] = useState<TrackData[]>([]);
-  const [showUsersAdmin, setShowUsersAdmin] = useState(false);
-  const [showDevicesAdmin, setShowDevicesAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeView, setActiveView] = useState<NavView>("mapa");
   const [highlightFundos, setHighlightFundos] = useState<string[]>([]);
