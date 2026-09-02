@@ -200,6 +200,41 @@ export async function deleteSession(sessionId: string): Promise<void> {
   if (error) throw error;
 }
 
+export interface Alerta {
+  id: string;
+  android_id: string;
+  tipo: string;
+  mensaje: string | null;
+  created_at: string;
+  leida: boolean;
+}
+
+export async function getAlertas(limit = 50): Promise<Alerta[]> {
+  const { data, error } = await supabase
+    .from("alertas")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function marcarAlertaLeida(id: string) {
+  const { error } = await supabase
+    .from("alertas")
+    .update({ leida: true })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function marcarTodasLeidas() {
+  const { error } = await supabase
+    .from("alertas")
+    .update({ leida: true })
+    .eq("leida", false);
+  if (error) throw error;
+}
+
 export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
   const { data, error } = await supabase.rpc("get_all_session_points", {
     p_sesion_id: sessionId,
