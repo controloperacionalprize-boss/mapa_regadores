@@ -245,14 +245,18 @@ export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
 
 export async function getMultiSessionPoints(sessionIds: string[]): Promise<Record<string, GpsPoint[]>> {
   if (sessionIds.length === 0) return {};
-  const { data, error } = await supabase.rpc("get_multi_session_points", {
-    p_sesion_ids: sessionIds,
-  });
-  if (error) throw error;
   const grouped: Record<string, GpsPoint[]> = {};
-  ((data as GpsPoint[]) || []).forEach((p) => {
-    if (!grouped[p.sesion_id]) grouped[p.sesion_id] = [];
-    grouped[p.sesion_id].push(p);
-  });
+  const batchSize = 5;
+  for (let i = 0; i < sessionIds.length; i += batchSize) {
+    const batch = sessionIds.slice(i, i + batchSize);
+    const { data, error } = await supabase.rpc("get_multi_session_points", {
+      p_sesion_ids: batch,
+    });
+    if (error) throw error;
+    ((data as GpsPoint[]) || []).forEach((p) => {
+      if (!grouped[p.sesion_id]) grouped[p.sesion_id] = [];
+      grouped[p.sesion_id].push(p);
+    });
+  }
   return grouped;
 }
