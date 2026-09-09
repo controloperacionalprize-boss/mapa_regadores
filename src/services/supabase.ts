@@ -236,9 +236,11 @@ export async function marcarTodasLeidas() {
 }
 
 export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
-  const { data, error } = await supabase.rpc("get_all_session_points", {
-    p_sesion_id: sessionId,
-  });
+  const { data, error } = await supabase
+    .from("punto_gps")
+    .select("id, sesion_id, lat, lng, velocidad, precision_metros, fundo, grabado_en, offline")
+    .eq("sesion_id", sessionId)
+    .order("grabado_en", { ascending: true });
   if (error) throw error;
   return (data as GpsPoint[]) || [];
 }
@@ -246,12 +248,14 @@ export async function getSessionPoints(sessionId: string): Promise<GpsPoint[]> {
 export async function getMultiSessionPoints(sessionIds: string[]): Promise<Record<string, GpsPoint[]>> {
   if (sessionIds.length === 0) return {};
   const grouped: Record<string, GpsPoint[]> = {};
-  const batchSize = 5;
+  const batchSize = 10;
   for (let i = 0; i < sessionIds.length; i += batchSize) {
     const batch = sessionIds.slice(i, i + batchSize);
-    const { data, error } = await supabase.rpc("get_multi_session_points", {
-      p_sesion_ids: batch,
-    });
+    const { data, error } = await supabase
+      .from("punto_gps")
+      .select("id, sesion_id, lat, lng, velocidad, precision_metros, fundo, grabado_en, offline")
+      .in("sesion_id", batch)
+      .order("grabado_en", { ascending: true });
     if (error) throw error;
     ((data as GpsPoint[]) || []).forEach((p) => {
       if (!grouped[p.sesion_id]) grouped[p.sesion_id] = [];

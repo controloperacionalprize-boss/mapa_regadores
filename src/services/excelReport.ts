@@ -47,7 +47,11 @@ export async function generateExcelReport(sessions: Session[], deviceMap: Record
   const batchSize = 20;
   for (let i = 0; i < allSessionIds.length; i += batchSize) {
     const batch = allSessionIds.slice(i, i + batchSize);
-    const { data } = await supabase.rpc("get_multi_session_points", { p_sesion_ids: batch });
+    const { data } = await supabase
+      .from("punto_gps")
+      .select("id, sesion_id, lat, lng, velocidad, precision_metros, fundo, grabado_en, offline")
+      .in("sesion_id", batch)
+      .order("grabado_en", { ascending: true });
     if (data) {
       for (const p of data as any[]) {
         if (!sessionPoints[p.sesion_id]) sessionPoints[p.sesion_id] = [];

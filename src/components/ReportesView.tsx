@@ -95,7 +95,11 @@ export default function ReportesView({ sessions, deviceMap }: Props) {
       const batchSize = 20;
       for (let i = 0; i < ids.length; i += batchSize) {
         const batch = ids.slice(i, i + batchSize);
-        const { data } = await supabase.rpc("get_multi_session_points", { p_sesion_ids: batch });
+        const { data } = await supabase
+          .from("punto_gps")
+          .select("id, sesion_id, lat, lng, velocidad, precision_metros, fundo, grabado_en, offline")
+          .in("sesion_id", batch)
+          .order("grabado_en", { ascending: true });
         if (data) for (const p of data as GpsPoint[]) {
           if (!pointsMap[p.sesion_id]) pointsMap[p.sesion_id] = [];
           pointsMap[p.sesion_id].push(p);
