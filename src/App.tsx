@@ -198,7 +198,12 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
     const sessionsForDate = sessions.filter((s) => {
       const d = new Date(s.iniciado_en);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return dateStr === dateFilter;
+      if (dateStr !== dateFilter) return false;
+      if (filter) {
+        const fundo = s.fundo || "";
+        if (!fundo.toUpperCase().includes(filter.toUpperCase())) return false;
+      }
+      return true;
     });
     if (sessionsForDate.length === 0) { setMultiTracks([]); return; }
     const ids = sessionsForDate.map((s) => s.id);
@@ -211,7 +216,7 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
       })).filter((t) => t.points.length > 0);
       setMultiTracks(tracks);
     }).catch(console.error);
-  }, [dateFilter, sessions, selected]);
+  }, [dateFilter, filter, sessions, selected]);
 
   const selectSession = useCallback(async (s: Session) => {
     setSelected(s);
