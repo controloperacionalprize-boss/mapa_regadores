@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from "react";
-import type { GpsPoint } from "../services/supabase";
+import type { GpsPoint } from "../services/api";
 import "./TrackTimeline.css";
 
 interface Props {

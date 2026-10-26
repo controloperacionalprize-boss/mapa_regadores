@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Session, GpsPoint, Dispositivo } from "../services/supabase";
+import type { Session, GpsPoint, Dispositivo } from "../services/api";
 import type { ParadaConFotos } from "./MapView";
 import type { TrackData } from "./MapView";
 import TrackTimeline from "./TrackTimeline";
@@ -18,8 +18,12 @@ interface Props {
   liveMode: boolean;
   filter: string;
   onFilterChange: (f: string) => void;
-  dateFilter: string;
-  onDateFilterChange: (d: string) => void;
+  dateFrom: string;
+  dateTo: string;
+  onDateFromChange: (d: string) => void;
+  onDateToChange: (d: string) => void;
+  userFilter: string;
+  onUserFilterChange: (u: string) => void;
   multiTracks: TrackData[];
   highlightFundos?: string[];
   deviceMap?: Record<string, Dispositivo>;
@@ -46,7 +50,7 @@ function getFundoColor(name: string): string {
   return key ? FUNDO_COLORS[key] : "#94a3b8";
 }
 
-function resolveFundo(s: { fundo: string; usuario: string | null }, devMap: Record<string, import("../services/supabase").Dispositivo>): string {
+function resolveFundo(s: { fundo: string; usuario: string | null }, devMap: Record<string, import("../services/api").Dispositivo>): string {
   if (s.fundo) return s.fundo;
   if (!s.usuario || !devMap[s.usuario]) return "";
   const mods = devMap[s.usuario].fundos_asignados || [];
@@ -55,7 +59,7 @@ function resolveFundo(s: { fundo: string; usuario: string | null }, devMap: Reco
   return fundo || "";
 }
 
-function resolveDeviceName(usuario: string | null, devMap: Record<string, import("../services/supabase").Dispositivo>): string | null {
+function resolveDeviceName(usuario: string | null, devMap: Record<string, import("../services/api").Dispositivo>): string | null {
   if (!usuario || !devMap[usuario]) return usuario;
   return devMap[usuario].nombre || usuario;
 }
@@ -79,15 +83,79 @@ function formatDist(m: number) {
   return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
 }
 
-export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFilter, onDateFilterChange, multiTracks, highlightFundos = [], deviceMap = {}, paradas = [], isAdmin = false, onDeleteSession }: Props) {
+function getWeekRange(): [string, string] {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return [fmt(mon), fmt(sun)];
+}
+
+function toDateStr(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const DAY_COLORS = [
+  "#00e5ff", "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff",
+  "#ff922b", "#cc5de8", "#20c997", "#ff6b81", "#748ffc",
+];
+
+function UserSessionGroup({ userName, sessions, deviceMap, onSelectSession }: {
+  userName: string;
+  sessions: Session[];
+  deviceMap: Record<string, Dispositivo>;
+  onSelectSession: (s: Session) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const sorted = [...sessions].sort((a, b) => new Date(a.iniciado_en).getTime() - new Date(b.iniciado_en).getTime());
+  const uniqueDays = [...new Set(sorted.map((s) => toDateStr(s.iniciado_en)))];
+  const dayColorMap: Record<string, string> = {};
+  uniqueDays.forEach((d, i) => { dayColorMap[d] = DAY_COLORS[i % DAY_COLORS.length]; });
+
+  return (
+    <div className="user-group">
+      <button className="user-group-header" onClick={() => setOpen(!open)}>
+        <span className="user-group-name">{userName}</span>
+        <span className="user-group-count">{sessions.length} recorridos</span>
+        <span className="toggle-arrow">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && sorted.map((s) => {
+        const dayStr = toDateStr(s.iniciado_en);
+        const dayColor = dayColorMap[dayStr];
+        const d = new Date(s.iniciado_en);
+        const dayLabel = d.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" });
+        const fundo = resolveFundo(s, deviceMap);
+        return (
+          <button key={s.id} className={`session-btn ${!s.terminado_en ? "session-btn-live" : ""}`} onClick={() => onSelectSession(s)}>
+            <div className="session-btn-left">
+              <div className="session-btn-fundo">
+                {!s.terminado_en && <span className="session-live-dot" />}
+                <span className="fundo-color-dot" style={{ background: dayColor }} />
+                {dayLabel}
+              </div>
+              <div className="session-btn-date">{fundo || "Sin fundo"}</div>
+            </div>
+            <div className="session-btn-duration">
+              {!s.terminado_en ? "En vivo" : durationMin(s.iniciado_en, s.terminado_en)}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function Sidebar({ sessions, selectedSession, points, distance, onSelectSession, onBack, fundoCounts, cursorIndex, onCursorChange, liveMode, filter, onFilterChange, dateFrom, dateTo, onDateFromChange, onDateToChange, userFilter, onUserFilterChange, multiTracks, highlightFundos = [], deviceMap = {}, paradas = [], isAdmin = false, onDeleteSession }: Props) {
   const filtered = sessions.filter((s) => {
     const fundo = resolveFundo(s, deviceMap);
     if (filter && !fundo.toUpperCase().includes(filter.toUpperCase())) return false;
-    if (dateFilter) {
-      const d = new Date(s.iniciado_en);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      if (dateStr !== dateFilter) return false;
-    }
+    const ds = toDateStr(s.iniciado_en);
+    if (dateFrom && ds < dateFrom) return false;
+    if (dateTo && ds > dateTo) return false;
     return true;
   });
   const fundoNames = [...new Set(sessions.map((s) => resolveFundo(s, deviceMap)))].filter(Boolean);
@@ -104,6 +172,12 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
   const [showTimeline, setShowTimeline] = useState(true);
   const [showTrackTimeline, setShowTrackTimeline] = useState(true);
   const [showParadas, setShowParadas] = useState(true);
+
+  const allUserNames = [...new Set(filtered.map((s) => resolveDeviceName(s.usuario, deviceMap) || s.usuario || "Sin usuario"))].sort();
+  const displayFiltered = userFilter ? filtered.filter((s) => {
+    const name = resolveDeviceName(s.usuario, deviceMap) || s.usuario || "Sin usuario";
+    return name === userFilter;
+  }) : filtered;
 
   return (
     <aside className="sidebar">
@@ -313,7 +387,7 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
             <div className="card-header card-header-toggle" onClick={() => setShowRecorridos(!showRecorridos)}>
               <h3>Recorridos</h3>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="count-badge">{filtered.length}</span>
+                <span className="count-badge">{displayFiltered.length}</span>
                 <span className="toggle-arrow">{showRecorridos ? "▲" : "▼"}</span>
               </div>
             </div>
@@ -322,34 +396,55 @@ export default function Sidebar({ sessions, selectedSession, points, distance, o
                 <option value="">Todos los fundos</option>
                 {fundoNames.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
-              <input
-                type="date"
-                className="filter-sidebar"
-                value={dateFilter}
-                onChange={(e) => onDateFilterChange(e.target.value)}
-              />
+              <div className="date-range-row">
+                <input type="date" className="filter-sidebar" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} placeholder="Desde" />
+                <input type="date" className="filter-sidebar" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} placeholder="Hasta" />
+              </div>
+              <div className="date-range-row">
+                <button className="week-btn" onClick={() => { const [f, t] = getWeekRange(); onDateFromChange(f); onDateToChange(t); }}>Esta semana</button>
+                {(dateFrom || dateTo) && <button className="week-btn week-btn-clear" onClick={() => { onDateFromChange(""); onDateToChange(""); }}>Limpiar</button>}
+              </div>
+              <select className="filter-sidebar" value={userFilter} onChange={(e) => onUserFilterChange(e.target.value)}>
+                <option value="">Todos los usuarios</option>
+                {allUserNames.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
               <div className="session-list">
-                {filtered.map((s) => {
-                  const fundo = resolveFundo(s, deviceMap);
-                  const devName = resolveDeviceName(s.usuario, deviceMap);
-                  return (
-                  <button key={s.id} className={`session-btn ${!s.terminado_en ? "session-btn-live" : ""}`} onClick={() => onSelectSession(s)}>
-                    <div className="session-btn-left">
-                      <div className="session-btn-fundo">
-                        {!s.terminado_en && <span className="session-live-dot" />}
-                        <span className="fundo-color-dot" style={{ background: getFundoColor(fundo) }} />
-                        {fundo || "Sin fundo"}
-                      </div>
-                      <div className="session-btn-date">{formatDate(s.iniciado_en)}</div>
-                      {devName && <div className="session-btn-user">{devName}</div>}
-                    </div>
-                    <div className="session-btn-duration">
-                      {!s.terminado_en ? "En vivo" : durationMin(s.iniciado_en, s.terminado_en)}
-                    </div>
-                  </button>
-                  );
-                })}
-                {filtered.length === 0 && <p className="empty">No hay recorridos</p>}
+                {(() => {
+                  const grouped: Record<string, Session[]> = {};
+                  displayFiltered.forEach((s) => {
+                    const name = resolveDeviceName(s.usuario, deviceMap) || s.usuario || "Sin usuario";
+                    if (!grouped[name]) grouped[name] = [];
+                    grouped[name].push(s);
+                  });
+                  const userNames = Object.keys(grouped).sort();
+                  if (userNames.length === 0) return <p className="empty">No hay recorridos</p>;
+                  const isRangeMode = !!(dateFrom && dateTo && dateFrom !== dateTo);
+                  if (!isRangeMode) {
+                    return displayFiltered.map((s) => {
+                      const fundo = resolveFundo(s, deviceMap);
+                      const devName = resolveDeviceName(s.usuario, deviceMap);
+                      return (
+                        <button key={s.id} className={`session-btn ${!s.terminado_en ? "session-btn-live" : ""}`} onClick={() => onSelectSession(s)}>
+                          <div className="session-btn-left">
+                            <div className="session-btn-fundo">
+                              {!s.terminado_en && <span className="session-live-dot" />}
+                              <span className="fundo-color-dot" style={{ background: getFundoColor(fundo) }} />
+                              {fundo || "Sin fundo"}
+                            </div>
+                            <div className="session-btn-date">{formatDate(s.iniciado_en)}</div>
+                            {devName && <div className="session-btn-user">{devName}</div>}
+                          </div>
+                          <div className="session-btn-duration">
+                            {!s.terminado_en ? "En vivo" : durationMin(s.iniciado_en, s.terminado_en)}
+                          </div>
+                        </button>
+                      );
+                    });
+                  }
+                  return userNames.map((userName) => (
+                    <UserSessionGroup key={userName} userName={userName} sessions={grouped[userName]} deviceMap={deviceMap} onSelectSession={onSelectSession} />
+                  ));
+                })()}
               </div>
             </div>}
           </div>

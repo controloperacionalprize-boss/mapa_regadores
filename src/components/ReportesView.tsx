@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import type { Session, Dispositivo, GpsPoint } from "../services/supabase";
-import { supabase } from "../services/supabase";
+import type { Session, Dispositivo } from "../services/api";
+import { getMultiSessionPoints, getParadas } from "../services/api";
 import { generateExcelReport } from "../services/excelReport";
 import "./ReportesView.css";
 
@@ -91,24 +91,14 @@ export default function ReportesView({ sessions, deviceMap }: Props) {
     setLoading(true);
     (async () => {
       const ids = filtered.map((s) => s.id);
-      const pointsMap: Record<string, GpsPoint[]> = {};
-      const batchSize = 20;
-      for (let i = 0; i < ids.length; i += batchSize) {
-        const batch = ids.slice(i, i + batchSize);
-        const { data } = await supabase
-          .from("punto_gps")
-          .select("id, sesion_id, lat, lng, velocidad, precision_metros, fundo, grabado_en, offline")
-          .in("sesion_id", batch)
-          .order("grabado_en", { ascending: true });
-        if (data) for (const p of data as GpsPoint[]) {
-          if (!pointsMap[p.sesion_id]) pointsMap[p.sesion_id] = [];
-          pointsMap[p.sesion_id].push(p);
-        }
-      }
-      const { data: allParadas } = await supabase
-        .from("paradas").select("sesion_id").in("sesion_id", ids);
+      const pointsMap = await getMultiSessionPoints(ids);
       const paradaCounts: Record<string, number> = {};
-      for (const p of allParadas || []) paradaCounts[p.sesion_id] = (paradaCounts[p.sesion_id] || 0) + 1;
+      for (const id of ids) {
+        try {
+          const paradas = await getParadas(id);
+          paradaCounts[id] = paradas.length;
+        } catch { paradaCounts[id] = 0; }
+      }
 
       if (cancelled) return;
       const result: RowData[] = filtered.map((s) => {

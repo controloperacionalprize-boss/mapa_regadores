@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { checkUsuarioAutorizado } from "../services/supabase";
+import { checkUsuarioAutorizado } from "../services/api";
 import { startDeviceFlow, pollDeviceFlow } from "../services/msalConfig";
-import type { UsuarioAutorizado } from "../services/supabase";
+import type { UsuarioAutorizado } from "../services/api";
 import "./LoginPage.css";
 
 interface Props {

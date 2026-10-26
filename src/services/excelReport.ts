@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
-import { supabase } from "./supabase";
-import type { Session, Dispositivo } from "./supabase";
+import { getMultiSessionPoints, getParadas } from "./api";
+import type { Session, Dispositivo } from "./api";
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371000;
@@ -44,32 +44,16 @@ export async function generateExcelReport(sessions: Session[], deviceMap: Record
 
   // Fetch points for all sessions
   const allSessionIds = sessions.map((s) => s.id);
-  const batchSize = 20;
-  for (let i = 0; i < allSessionIds.length; i += batchSize) {
-    const batch = allSessionIds.slice(i, i + batchSize);
-    const { data } = await supabase
-      .from("punto_gps")
-      .select("id, sesion_id, lat, lng, velocidad, precision_metros, fundo, grabado_en, offline")
-      .in("sesion_id", batch)
-      .order("grabado_en", { ascending: true });
-    if (data) {
-      for (const p of data as any[]) {
-        if (!sessionPoints[p.sesion_id]) sessionPoints[p.sesion_id] = [];
-        sessionPoints[p.sesion_id].push(p);
-      }
-    }
-  }
+  const sessionPoints_fetched = await getMultiSessionPoints(allSessionIds);
+  Object.assign(sessionPoints, sessionPoints_fetched);
 
   // Fetch all paradas
-  const { data: allParadas } = await supabase
-    .from("paradas")
-    .select("*")
-    .in("sesion_id", allSessionIds)
-    .order("inicio", { ascending: true });
   const paradasBySesion: Record<string, any[]> = {};
-  for (const p of allParadas || []) {
-    if (!paradasBySesion[p.sesion_id]) paradasBySesion[p.sesion_id] = [];
-    paradasBySesion[p.sesion_id].push(p);
+  for (const id of allSessionIds) {
+    try {
+      const paradas = await getParadas(id);
+      if (paradas.length > 0) paradasBySesion[id] = paradas;
+    } catch {}
   }
 
   for (const s of sessions) {

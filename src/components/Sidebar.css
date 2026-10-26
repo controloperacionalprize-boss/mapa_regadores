@@ -429,6 +429,64 @@
   border-color: var(--accent);
 }
 
+.date-range-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.date-range-row .filter-sidebar {
+  flex: 1;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.week-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.week-btn:hover { opacity: 0.85; }
+.week-btn-clear {
+  background: transparent;
+  color: var(--t2);
+  border-color: var(--border);
+}
+.week-btn-clear:hover { border-color: var(--accent); }
+
+.user-group {
+  margin-bottom: 6px;
+}
+.user-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--t1);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 4px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.user-group-header:hover {
+  background: var(--accent-bg, rgba(59,130,246,0.08));
+  border-color: var(--accent, #3b82f6);
+}
+.user-group-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-group-count { font-size: 11px; font-weight: 500; color: var(--t2); white-space: nowrap; }
+
 .export-excel-btn {
   width: 100%;
   padding: 9px 12px;

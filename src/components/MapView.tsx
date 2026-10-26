@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import type { PolygonData } from "../services/kmzLoader";
-import type { GpsPoint, Parada, ParadaFoto } from "../services/supabase";
+import type { GpsPoint, Parada, ParadaFoto } from "../services/api";
 import "leaflet/dist/leaflet.css";
 
 export interface TrackData {
@@ -40,12 +40,14 @@ function FitBounds({ points }: { points: GpsPoint[] }) {
   const didFit = useRef(false);
   useEffect(() => {
     if (points.length < 2 || didFit.current) return;
-    const lats = points.map((p) => p.lat);
-    const lngs = points.map((p) => p.lng);
-    map.fitBounds(
-      [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
-      { padding: [40, 40] }
-    );
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const p of points) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    }
+    map.fitBounds([[minLat, minLng], [maxLat, maxLng]], { padding: [40, 40] });
     didFit.current = true;
   }, [points, map]);
 
@@ -127,9 +129,14 @@ function FitMultiBounds({ tracks }: { tracks: TrackData[] }) {
     if (didFit.current) return;
     const allPts = tracks.flatMap((t) => t.points);
     if (allPts.length < 2) return;
-    const lats = allPts.map((p) => p.lat);
-    const lngs = allPts.map((p) => p.lng);
-    map.fitBounds([[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]], { padding: [40, 40] });
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const p of allPts) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    }
+    map.fitBounds([[minLat, minLng], [maxLat, maxLng]], { padding: [40, 40] });
     didFit.current = true;
   }, [tracks, map]);
   return null;

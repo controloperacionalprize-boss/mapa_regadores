@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getSessions, getSessionPoints, getMultiSessionPoints, supabase, checkUsuarioAutorizado, getDispositivoByAndroidId, getDispositivos, getParadas, getParadaFotos, deleteSession } from "./services/supabase";
-import type { Session, GpsPoint, UsuarioAutorizado, Dispositivo } from "./services/supabase";
+import { getSessions, getSessionPoints, getMultiSessionPoints, checkUsuarioAutorizado, getDispositivoByAndroidId, getDispositivos, getParadas, getParadaFotos, deleteSession } from "./services/api";
+import type { Session, GpsPoint, UsuarioAutorizado, Dispositivo } from "./services/api";
 import type { ParadaConFotos } from "./components/MapView";
 import { loadKmzPolygons } from "./services/kmzLoader";
 import type { PolygonData } from "./services/kmzLoader";
@@ -75,9 +75,10 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
   const [cursorIndex, setCursorIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [liveMode, setLiveMode] = useState(false);
-  const [, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [filter, setFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [userFilter, setUserFilter] = useState("");
   const [multiTracks, setMultiTracks] = useState<TrackData[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeView, setActiveView] = useState<NavView>("mapa");
@@ -106,14 +107,14 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
     setIsAdmin(usuario.rol === "admin");
   }, [usuario.rol]);
 
-  // Poll sessions every 3s to detect new/ended sessions
+  // Poll sessions every 30s (only when tab is visible)
   useEffect(() => {
     const interval = setInterval(async () => {
+      if (document.hidden) return;
       try {
         const fresh = await getSessions();
         setSessions(fresh);
 
-        // If watching a live session, check if it ended
         if (liveRef.current && selectedIdRef.current) {
           const current = fresh.find((s) => s.id === selectedIdRef.current);
           if (current?.terminado_en) {
@@ -123,14 +124,15 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
           }
         }
       } catch {}
-    }, 3000);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Poll GPS points every 3s when in live mode
+  // Poll GPS points every 15s when in live mode (only when tab is visible)
   useEffect(() => {
     if (!liveMode) return;
     const interval = setInterval(async () => {
+      if (document.hidden) return;
       if (!selectedIdRef.current) return;
       try {
         const pts = await getSessionPoints(selectedIdRef.current);
@@ -140,83 +142,53 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
           setCursorIndex(pts.length - 1);
         }
       } catch {}
-    }, 3000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [liveMode, points.length]);
 
-  // Realtime WebSocket (works if Realtime is enabled in Supabase)
-  useEffect(() => {
-    const channel = supabase
-      .channel("realtime-all")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "punto_gps" },
-        (payload) => {
-          const newPt = payload.new as GpsPoint;
-          if (!liveRef.current || newPt.sesion_id !== selectedIdRef.current) return;
-          setPoints((prev) => {
-            if (prev.some((p) => p.id === newPt.id)) return prev;
-            const updated = [...prev, newPt];
-            setDistance(calcDistance(updated));
-            setCursorIndex(updated.length - 1);
-            return updated;
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "sesiones_gps" },
-        (payload) => {
-          const s = payload.new as Session;
-          if (s.app !== "mapa_regadores") return;
-          setSessions((prev) => prev.some((x) => x.id === s.id) ? prev : [s, ...prev]);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "sesiones_gps" },
-        (payload) => {
-          const s = payload.new as Session;
-          if (s.app !== "mapa_regadores") return;
-          setSessions((prev) => prev.map((x) => (x.id === s.id ? s : x)));
-          if (s.id === selectedIdRef.current && s.terminado_en) {
-            setLiveMode(false);
-            liveRef.current = false;
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") setSocketStatus("connected");
-        else if (status === "CLOSED" || status === "CHANNEL_ERROR") setSocketStatus("disconnected");
-      });
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
 
   useEffect(() => {
-    if (!dateFilter || selected) { setMultiTracks([]); return; }
-    const sessionsForDate = sessions.filter((s) => {
+    if ((!dateFrom && !dateTo) || selected) { setMultiTracks([]); return; }
+    const sessionsInRange = sessions.filter((s) => {
       const d = new Date(s.iniciado_en);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      if (dateStr !== dateFilter) return false;
+      if (dateFrom && dateStr < dateFrom) return false;
+      if (dateTo && dateStr > dateTo) return false;
       if (filter) {
         const fundo = s.fundo || "";
         if (!fundo.toUpperCase().includes(filter.toUpperCase())) return false;
       }
+      if (userFilter) {
+        const dev = s.usuario ? deviceMap[s.usuario] : null;
+        const name = dev?.nombre || s.usuario || "Sin usuario";
+        if (name !== userFilter) return false;
+      }
       return true;
     });
-    if (sessionsForDate.length === 0) { setMultiTracks([]); return; }
-    const ids = sessionsForDate.map((s) => s.id);
+    if (sessionsInRange.length === 0) { setMultiTracks([]); return; }
+    const ids = sessionsInRange.map((s) => s.id);
     getMultiSessionPoints(ids).then((grouped) => {
-      const tracks: TrackData[] = sessionsForDate.map((s, i) => ({
-        sessionId: s.id,
-        points: grouped[s.id] || [],
-        color: TRACK_COLORS[i % TRACK_COLORS.length],
-        label: `${s.fundo} — ${s.usuario || "Sin usuario"}`,
-      })).filter((t) => t.points.length > 0);
+      const uniqueDays = [...new Set(sessionsInRange.map((s) => {
+        const d = new Date(s.iniciado_en);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }))].sort();
+      const dayColorMap: Record<string, string> = {};
+      uniqueDays.forEach((day, i) => { dayColorMap[day] = TRACK_COLORS[i % TRACK_COLORS.length]; });
+
+      const tracks: TrackData[] = sessionsInRange.map((s) => {
+        const d = new Date(s.iniciado_en);
+        const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const dayLabel = d.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" });
+        return {
+          sessionId: s.id,
+          points: grouped[s.id] || [],
+          color: dayColorMap[dayStr],
+          label: `${dayLabel} — ${s.fundo || "Sin fundo"} — ${s.usuario || "Sin usuario"}`,
+        };
+      }).filter((t) => t.points.length > 0);
       setMultiTracks(tracks);
     }).catch(console.error);
-  }, [dateFilter, filter, sessions, selected]);
+  }, [dateFrom, dateTo, filter, userFilter, sessions, selected, deviceMap]);
 
   const selectSession = useCallback(async (s: Session) => {
     setSelected(s);
@@ -318,8 +290,12 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
             liveMode={liveMode}
             filter={filter}
             onFilterChange={setFilter}
-            dateFilter={dateFilter}
-            onDateFilterChange={setDateFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            userFilter={userFilter}
+            onUserFilterChange={setUserFilter}
             multiTracks={multiTracks}
             highlightFundos={highlightFundos}
             deviceMap={deviceMap}

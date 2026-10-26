@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { getAlertas, marcarAlertaLeida, marcarTodasLeidas, supabase } from "../services/supabase";
-import type { Alerta, Dispositivo } from "../services/supabase";
+import { getAlertas, marcarAlertaLeida, marcarTodasLeidas } from "../services/api";
+import type { Alerta, Dispositivo } from "../services/api";
 import "./AlertsBell.css";
 
 interface Props {
@@ -22,17 +22,10 @@ export default function AlertsBell({ deviceMap }: Props) {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    const interval = setInterval(load, 10000);
+    const interval = setInterval(() => { if (!document.hidden) load(); }, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("alertas-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "alertas" }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

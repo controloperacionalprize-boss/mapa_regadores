@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { getDispositivos, updateDispositivo, deleteDispositivo } from "../services/supabase";
-import type { Dispositivo } from "../services/supabase";
+import { getDispositivos, updateDispositivo, deleteDispositivo } from "../services/api";
+import type { Dispositivo } from "../services/api";
 import "./DevicesAdmin.css";
 
 const FUNDOS_MODULOS: Record<string, string[]> = {

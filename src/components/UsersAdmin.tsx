@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { getUsuariosAutorizados, addUsuarioAutorizado, updateUsuarioAutorizado, deleteUsuarioAutorizado } from "../services/supabase";
-import type { UsuarioAutorizado } from "../services/supabase";
+import { getUsuariosAutorizados, addUsuarioAutorizado, updateUsuarioAutorizado, deleteUsuarioAutorizado } from "../services/api";
+import type { UsuarioAutorizado } from "../services/api";
 import "./UsersAdmin.css";
 
 interface Props {
