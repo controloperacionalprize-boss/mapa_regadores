@@ -325,7 +325,7 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
 
       {activeView === "reportes" && (
         <div className="main" style={{ overflow: "auto", flex: 1 }}>
-          <ReportesView sessions={sessions} deviceMap={deviceMap} />
+          <ReportesView sessions={sessions} deviceMap={deviceMap} polygons={polygons} />
         </div>
       )}
 

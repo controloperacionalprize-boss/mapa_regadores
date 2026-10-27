@@ -291,3 +291,28 @@
   .kpi { padding: 14px 16px; }
   .kpi-value { font-size: 20px; }
 }
+
+/* Conmutador Panel / Tablas */
+.reportes-modo {
+  display: inline-flex;
+  gap: 2px;
+  margin: 16px 36px 0;
+  align-self: flex-start;
+  padding: 3px;
+  border-radius: 10px;
+  background: #e8ecf3;
+}
+.reportes-modo button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.reportes-modo button.active { background: #fff; color: #1e293b; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); }
+.reportes-contenedor { width: 100%; min-height: 100%; display: flex; flex-direction: column; background: #f5f6fa; }
+.reportes-panel { padding: 12px 36px 28px; }

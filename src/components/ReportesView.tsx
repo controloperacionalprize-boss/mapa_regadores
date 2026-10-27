@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import type { Session, Dispositivo } from "../services/api";
 import { getMultiSessionPoints, getParadas } from "../services/api";
 import { generateExcelReport } from "../services/excelReport";
+import type { PolygonData } from "../services/kmzLoader";
+import PanelRegadores from "./panel/PanelRegadores";
 import "./ReportesView.css";
 
 interface Props {
@@ -59,7 +61,7 @@ interface RowData {
   paradaCount: number;
 }
 
-export default function ReportesView({ sessions, deviceMap }: Props) {
+function ReportesTablas({ sessions, deviceMap }: Props) {
   const [tab, setTab] = useState<Tab>("recorridos");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -301,6 +303,24 @@ export default function ReportesView({ sessions, deviceMap }: Props) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// El panel no carga nada de las tablas: cada modo monta solo lo suyo.
+export default function ReportesView({ sessions, deviceMap, polygons }: Props & { polygons: PolygonData[] }) {
+  const [modo, setModo] = useState<"panel" | "tablas">("panel");
+  return (
+    <div className="reportes-contenedor">
+      <div className="reportes-modo" role="group" aria-label="Vista de reportes">
+        <button className={modo === "panel" ? "active" : ""} onClick={() => setModo("panel")}>Panel</button>
+        <button className={modo === "tablas" ? "active" : ""} onClick={() => setModo("tablas")}>Tablas</button>
+      </div>
+      {modo === "panel" ? (
+        <div className="reportes-panel"><PanelRegadores polygons={polygons} /></div>
+      ) : (
+        <ReportesTablas sessions={sessions} deviceMap={deviceMap} />
+      )}
     </div>
   );
 }

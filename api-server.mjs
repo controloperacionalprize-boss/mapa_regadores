@@ -20,7 +20,7 @@ app.use(express.json());
 
 const routes = [
   "alertas", "dispositivos", "parada-fotos", "paradas",
-  "points", "sessions", "usuarios", "device-start", "device-poll",
+  "panel", "points", "sessions", "usuarios", "device-start", "device-poll",
 ];
 
 for (const name of routes) {
