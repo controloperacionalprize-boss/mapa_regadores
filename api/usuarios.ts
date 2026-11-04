@@ -1,6 +1,4 @@
-import { Pool } from "pg";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5 });
+import pool from "./_db.js";
 
 export default async function handler(req: any, res: any) {
 
@@ -18,10 +16,10 @@ export default async function handler(req: any, res: any) {
   }
 
   if (req.method === "POST") {
-    const { email, nombre, rol } = req.body;
+    const { email, nombre, rol, area } = req.body;
     await pool.query(
-      `INSERT INTO usuarios_autorizados (email, nombre, rol) VALUES ($1,$2,$3)`,
-      [email.toLowerCase().trim(), nombre, rol]
+      `INSERT INTO usuarios_autorizados (email, nombre, rol, area) VALUES ($1,$2,$3,$4)`,
+      [email.toLowerCase().trim(), nombre, rol, area || null]
     );
     return res.json({ ok: true });
   }

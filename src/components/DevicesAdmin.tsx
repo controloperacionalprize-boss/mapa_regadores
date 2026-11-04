@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getDispositivos, updateDispositivo, deleteDispositivo } from "../services/api";
-import type { Dispositivo } from "../services/api";
+import type { Dispositivo, UsuarioAutorizado } from "../services/api";
 import "./DevicesAdmin.css";
 
 const FUNDOS_MODULOS: Record<string, string[]> = {
@@ -12,21 +12,27 @@ const FUNDOS_MODULOS: Record<string, string[]> = {
 
 interface Props {
   onClose: () => void;
+  usuario: UsuarioAutorizado;
 }
 
-export default function DevicesAdmin({ onClose }: Props) {
+export default function DevicesAdmin({ onClose, usuario }: Props) {
   const [devices, setDevices] = useState<Dispositivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editFundos, setEditFundos] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const isAdmin = usuario.rol === "admin";
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await getDispositivos();
-      setDevices(data);
+      if (!isAdmin && usuario.area) {
+        setDevices(data.filter((d) => d.area === usuario.area));
+      } else {
+        setDevices(data);
+      }
     } catch {}
     setLoading(false);
   };
@@ -57,7 +63,7 @@ export default function DevicesAdmin({ onClose }: Props) {
 
   const saveEdit = async () => {
     if (!editingId) return;
-    await updateDispositivo(editingId, { nombre: editName || null, fundos_asignados: editFundos });
+    await updateDispositivo(editingId, { nombre: editName || null, fundos_asignados: editFundos, area: usuario.area || null });
     setEditingId(null);
     load();
   };
@@ -191,6 +197,7 @@ export default function DevicesAdmin({ onClose }: Props) {
                   </div>
                 ) : (
                   <div className="devices-modulos-display">
+                    {isAdmin && d.area && <span className="devices-area-badge">{d.area}</span>}
                     {(() => {
                       const grouped = getModulosLabel(d.fundos_asignados || []);
                       if (!grouped) return <span className="devices-no-name">Sin módulos asignados</span>;

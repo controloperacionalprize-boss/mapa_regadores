@@ -1,6 +1,4 @@
-import { Pool } from "pg";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5 });
+import pool from "./_db.js";
 
 export default async function handler(req: any, res: any) {
 

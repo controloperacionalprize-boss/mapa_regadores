@@ -44,6 +44,7 @@ export interface UsuarioAutorizado {
   email: string;
   nombre: string | null;
   rol: string;
+  area: string | null;
   activo: boolean;
   creado_en: string;
 }
@@ -54,6 +55,7 @@ export interface Dispositivo {
   modelo: string | null;
   nombre: string | null;
   fundos_asignados: string[];
+  area: string | null;
   activo: boolean;
   registrado_en: string;
   ultimo_acceso: string;
@@ -93,11 +95,11 @@ export async function getUsuariosAutorizados(): Promise<UsuarioAutorizado[]> {
   return request("usuarios");
 }
 
-export async function addUsuarioAutorizado(email: string, nombre: string, rol: string) {
-  return request("usuarios", { method: "POST", body: JSON.stringify({ email, nombre, rol }) });
+export async function addUsuarioAutorizado(email: string, nombre: string, rol: string, area: string | null = null) {
+  return request("usuarios", { method: "POST", body: JSON.stringify({ email, nombre, rol, area }) });
 }
 
-export async function updateUsuarioAutorizado(id: string, updates: Partial<Pick<UsuarioAutorizado, "nombre" | "rol" | "activo">>) {
+export async function updateUsuarioAutorizado(id: string, updates: Partial<Pick<UsuarioAutorizado, "nombre" | "rol" | "area" | "activo">>) {
   return request("usuarios", { method: "PATCH", body: JSON.stringify({ id, ...updates }) });
 }
 
@@ -140,7 +142,7 @@ export async function getDispositivos(): Promise<Dispositivo[]> {
   return request("dispositivos");
 }
 
-export async function updateDispositivo(id: string, updates: Partial<Pick<Dispositivo, "nombre" | "fundos_asignados" | "activo">>) {
+export async function updateDispositivo(id: string, updates: Partial<Pick<Dispositivo, "nombre" | "fundos_asignados" | "area" | "activo">>) {
   return request("dispositivos", { method: "PATCH", body: JSON.stringify({ id, ...updates }) });
 }
 
@@ -170,6 +172,29 @@ export async function marcarAlertaLeida(id: string) {
 
 export async function marcarTodasLeidas() {
   return request("alertas", { method: "PATCH", body: JSON.stringify({ all: true }) });
+}
+
+export interface Area {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  creado_en: string;
+}
+
+export async function getAreas(): Promise<Area[]> {
+  return request("areas");
+}
+
+export async function addArea(nombre: string) {
+  return request("areas", { method: "POST", body: JSON.stringify({ nombre }) });
+}
+
+export async function updateArea(id: string, updates: Partial<Pick<Area, "nombre" | "activo">>) {
+  return request("areas", { method: "PATCH", body: JSON.stringify({ id, ...updates }) });
+}
+
+export async function deleteArea(id: string) {
+  return request(`areas?id=${id}`, { method: "DELETE" });
 }
 
 export async function signOut() {

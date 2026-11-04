@@ -10,11 +10,12 @@ import Sidebar from "./components/Sidebar";
 import LoginPage from "./components/LoginPage";
 import UsersAdmin from "./components/UsersAdmin";
 import DevicesAdmin from "./components/DevicesAdmin";
+import AreasAdmin from "./components/AreasAdmin";
 import ReportesView from "./components/ReportesView";
 import AlertsBell from "./components/AlertsBell";
 import "./App.css";
 
-type NavView = "mapa" | "reportes" | "usuarios" | "dispositivos";
+type NavView = "mapa" | "reportes" | "usuarios" | "dispositivos" | "areas";
 
 const TRACK_COLORS = [
   "#00e5ff", "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff",
@@ -90,18 +91,25 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
   const selectedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getSessions(), loadKmzPolygons()])
-      .then(([s, p]) => { setSessions(s); setPolygons(p); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-    getDispositivos()
-      .then((devs) => {
+    Promise.all([getSessions(), loadKmzPolygons(), getDispositivos()])
+      .then(([s, p, devs]) => {
         const map: Record<string, Dispositivo> = {};
         devs.forEach((d) => { map[d.android_id] = d; });
         setDeviceMap(map);
+
+        if (usuario.rol !== "admin" && usuario.area) {
+          const allowedAndroidIds = new Set(
+            devs.filter((d) => d.area === usuario.area).map((d) => d.android_id)
+          );
+          setSessions(s.filter((ses) => ses.usuario && allowedAndroidIds.has(ses.usuario)));
+        } else {
+          setSessions(s);
+        }
+        setPolygons(p);
       })
-      .catch(console.error);
-  }, []);
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [usuario.rol, usuario.area]);
 
   useEffect(() => {
     setIsAdmin(usuario.rol === "admin");
@@ -113,7 +121,14 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
       if (document.hidden) return;
       try {
         const fresh = await getSessions();
-        setSessions(fresh);
+        if (usuario.rol !== "admin" && usuario.area) {
+          const allowedAndroidIds = new Set(
+            Object.values(deviceMap).filter((d) => d.area === usuario.area).map((d) => d.android_id)
+          );
+          setSessions(fresh.filter((ses) => ses.usuario && allowedAndroidIds.has(ses.usuario)));
+        } else {
+          setSessions(fresh);
+        }
 
         if (liveRef.current && selectedIdRef.current) {
           const current = fresh.find((s) => s.id === selectedIdRef.current);
@@ -271,6 +286,10 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
             <span>Dispositivos</span>
           </button>
+          {isAdmin && <button className={`side-nav-btn ${activeView === "areas" ? "side-nav-active" : ""}`} onClick={() => setActiveView("areas")} title="Áreas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span>Áreas</span>
+          </button>}
         </nav>
 
         <div className="app-content">
@@ -337,7 +356,13 @@ function Dashboard({ usuario, onLogout }: { usuario: UsuarioAutorizado; onLogout
 
       {activeView === "dispositivos" && (
         <div className="main" style={{ overflow: "auto", flex: 1 }}>
-          <DevicesAdmin onClose={() => setActiveView("mapa")} />
+          <DevicesAdmin onClose={() => setActiveView("mapa")} usuario={usuario} />
+        </div>
+      )}
+
+      {activeView === "areas" && (
+        <div className="main" style={{ overflow: "auto", flex: 1 }}>
+          <AreasAdmin onClose={() => setActiveView("mapa")} />
         </div>
       )}
         </div>

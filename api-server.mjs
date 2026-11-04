@@ -19,7 +19,7 @@ const app = express();
 app.use(express.json());
 
 const routes = [
-  "alertas", "dispositivos", "parada-fotos", "paradas",
+  "alertas", "areas", "dispositivos", "parada-fotos", "paradas",
   "panel", "points", "sessions", "usuarios", "device-start", "device-poll",
 ];
 

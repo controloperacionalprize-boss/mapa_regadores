@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { getUsuariosAutorizados, addUsuarioAutorizado, updateUsuarioAutorizado, deleteUsuarioAutorizado } from "../services/api";
-import type { UsuarioAutorizado } from "../services/api";
+import { getUsuariosAutorizados, addUsuarioAutorizado, updateUsuarioAutorizado, deleteUsuarioAutorizado, getAreas } from "../services/api";
+import type { UsuarioAutorizado, Area } from "../services/api";
 import "./UsersAdmin.css";
 
 interface Props {
@@ -9,18 +9,21 @@ interface Props {
 
 export default function UsersAdmin({ onClose }: Props) {
   const [usuarios, setUsuarios] = useState<UsuarioAutorizado[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [nombre, setNombre] = useState("");
   const [rol, setRol] = useState("usuario");
+  const [area, setArea] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const data = await getUsuariosAutorizados();
+      const [data, areasData] = await Promise.all([getUsuariosAutorizados(), getAreas()]);
       setUsuarios(data);
+      setAreas(areasData.filter((a) => a.activo));
     } catch (err: any) {
       setError(err.message);
     }
@@ -35,10 +38,11 @@ export default function UsersAdmin({ onClose }: Props) {
     setAdding(true);
     setError("");
     try {
-      await addUsuarioAutorizado(email, nombre, rol);
+      await addUsuarioAutorizado(email, nombre, rol, area || null);
       setEmail("");
       setNombre("");
       setRol("usuario");
+      setArea("");
       await load();
     } catch (err: any) {
       setError(err.message || "Error al agregar usuario");
@@ -91,6 +95,12 @@ export default function UsersAdmin({ onClose }: Props) {
             <option value="usuario">Usuario</option>
             <option value="admin">Admin</option>
           </select>
+          <select value={area} onChange={(e) => setArea(e.target.value)}>
+            <option value="">Sin área</option>
+            {areas.map((a) => (
+              <option key={a.id} value={a.nombre}>{a.nombre}</option>
+            ))}
+          </select>
           <button type="submit" disabled={adding}>
             {adding ? "Agregando..." : "Agregar"}
           </button>
@@ -117,6 +127,7 @@ export default function UsersAdmin({ onClose }: Props) {
                   <th>Email</th>
                   <th>Nombre</th>
                   <th>Rol</th>
+                  <th>Área</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -136,6 +147,23 @@ export default function UsersAdmin({ onClose }: Props) {
                       </span>
                     </td>
                     <td>
+                      <select
+                        className="users-area-select"
+                        value={u.area || ""}
+                        onChange={async (e) => {
+                          try {
+                            await updateUsuarioAutorizado(u.id, { area: e.target.value || null } as any);
+                            await load();
+                          } catch (err: any) { setError(err.message); }
+                        }}
+                      >
+                        <option value="">Sin área</option>
+                        {areas.map((a) => (
+                          <option key={a.id} value={a.nombre}>{a.nombre}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
                       <button className={`users-toggle ${u.activo ? "active" : ""}`} onClick={() => toggleActivo(u)}>
                         {u.activo ? "Activo" : "Inactivo"}
                       </button>
@@ -146,7 +174,7 @@ export default function UsersAdmin({ onClose }: Props) {
                   </tr>
                 ))}
                 {usuarios.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: "center", color: "#94a3b8" }}>No hay usuarios</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8" }}>No hay usuarios</td></tr>
                 )}
               </tbody>
             </table>

@@ -1,32 +1,79 @@
-# React + TypeScript + Vite
+# Mapa Regadores Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Dashboard web para monitoreo de recorridos GPS de regadores. React + Vite + Leaflet. Conecta con PostgreSQL (esquema `mapa_regadores`) via serverless functions en Vercel.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 18+
+- PostgreSQL con el esquema `mapa_regadores` configurado
 
-## React Compiler
+## Variables de entorno
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Crear archivo `.env.local` en la raíz:
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+DATABASE_URL=postgresql://usuario:password@host:5432/db_control_operacional
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Instalación
+
+```bash
+npm install
+```
+
+## Ejecutar en desarrollo
+
+Se necesitan **2 terminales**:
+
+**Terminal 1** — API local (serverless functions):
+```bash
+node api-server.mjs
+```
+Levanta los endpoints en `http://localhost:3001`.
+
+**Terminal 2** — Frontend Vite:
+```bash
+npm run dev
+```
+Abre en `http://localhost:5173`. Vite hace proxy de `/api` al puerto 3001 automáticamente.
+
+## Build para producción
+
+```bash
+npm run build
+```
+
+Genera la carpeta `dist/`.
+
+## Estructura
+
+```
+src/
+  App.tsx              — Layout principal y lógica de filtrado
+  components/
+    MapView.tsx        — Mapa Leaflet con tracks GPS
+    Sidebar.tsx        — Panel lateral con sesiones
+    UsersAdmin.tsx     — Gestión de usuarios autorizados
+    DevicesAdmin.tsx   — Gestión de dispositivos
+    AreasAdmin.tsx     — Maestro de áreas (Campo, Transporte, Almacén)
+    ReportesView.tsx   — Reportes y exportación Excel
+    AlertsBell.tsx     — Campana de alertas
+    LoginPage.tsx      — Login con Microsoft
+  services/
+    api.ts             — Cliente HTTP para todos los endpoints
+    kmzLoader.ts       — Carga de polígonos KMZ
+    msalConfig.ts      — Configuración Microsoft Auth
+api/
+  sessions.ts          — Endpoint sesiones
+  points.ts            — Endpoint puntos GPS
+  dispositivos.ts      — Endpoint dispositivos
+  usuarios.ts          — Endpoint usuarios
+  areas.ts             — Endpoint áreas
+  paradas.ts           — Endpoint paradas
+  parada-fotos.ts      — Endpoint fotos de paradas
+  alertas.ts           — Endpoint alertas
+```
+
+## Deploy
+
+Desplegado en Vercel. Push a `main` despliega automáticamente. Las funciones en `api/` se despliegan como serverless functions.

@@ -211,3 +211,19 @@
 .users-delete:hover {
   background: #fef2f2;
 }
+
+.users-area-select {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 11px;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #f8f9fb;
+  cursor: pointer;
+}
+
+.users-area-select:focus {
+  border-color: #4A90E2;
+  outline: none;
+}
