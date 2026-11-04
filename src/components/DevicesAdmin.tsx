@@ -193,7 +193,7 @@ export default function DevicesAdmin({ onClose, usuario }: Props) {
                   </div>
                 ) : (
                   <div className="devices-modulos-display">
-                    {isAdmin && d.area && <span className="devices-area-badge">{d.area}</span>}
+                    {d.area && <span className="devices-area-badge">{d.area}</span>}
                     {(() => {
                       const grouped = getModulosLabel(d.fundos_asignados || []);
                       if (!grouped) return <span className="devices-no-name">Sin módulos asignados</span>;
