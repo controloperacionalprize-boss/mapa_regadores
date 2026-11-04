@@ -1,0 +1,202 @@
+.areas-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.areas-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.areas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.areas-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.areas-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.areas-close:hover {
+  background: #f1f5f9;
+  color: #1a1a2e;
+}
+
+.areas-form {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.areas-form input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1a1a2e;
+  background: #f8f9fb;
+}
+
+.areas-form input:focus {
+  border-color: #4A90E2;
+  outline: none;
+  background: #fff;
+}
+
+.areas-form button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #4A90E2;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.areas-form button:hover { background: #357ABD; }
+.areas-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.areas-error {
+  color: #dc2626;
+  font-size: 13px;
+  padding: 8px 24px;
+  margin: 0;
+}
+
+.areas-loading, .areas-empty {
+  padding: 40px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.areas-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.areas-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 16px;
+  transition: all 0.2s;
+}
+
+.areas-card-inactive {
+  opacity: 0.5;
+}
+
+.areas-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.areas-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.areas-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.areas-card-edit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.areas-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #4A90E2;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1a1a2e;
+}
+
+.areas-status-btn {
+  padding: 4px 12px;
+  border-radius: 99px;
+  border: 1px solid #e5e7eb;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.areas-status-btn.areas-active {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.areas-status-btn.areas-inactive {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.areas-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.areas-btn-edit { color: #4A90E2; border-color: #bfdbfe; }
+.areas-btn-edit:hover { background: #eff6ff; }
+.areas-btn-save { color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; }
+.areas-btn-cancel { color: #64748b; }
+.areas-btn-delete { color: #dc2626; border-color: #fecaca; }
+.areas-btn-delete:hover { background: #fef2f2; }
