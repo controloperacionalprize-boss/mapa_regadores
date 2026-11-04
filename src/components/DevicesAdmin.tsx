@@ -28,11 +28,7 @@ export default function DevicesAdmin({ onClose, usuario }: Props) {
     setLoading(true);
     try {
       const data = await getDispositivos();
-      if (!isAdmin && usuario.area) {
-        setDevices(data.filter((d) => d.area === usuario.area));
-      } else {
-        setDevices(data);
-      }
+      setDevices(data);
     } catch {}
     setLoading(false);
   };
