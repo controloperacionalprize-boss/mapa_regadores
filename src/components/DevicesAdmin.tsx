@@ -22,7 +22,7 @@ export default function DevicesAdmin({ onClose, usuario }: Props) {
   const [editName, setEditName] = useState("");
   const [editFundos, setEditFundos] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const isAdmin = usuario.rol === "admin";
+
 
   const load = async () => {
     setLoading(true);
